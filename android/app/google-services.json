@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "597499278453",
+    "project_id": "turf11-dac3b",
+    "storage_bucket": "turf11-dac3b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:597499278453:android:b2c7cfe591d59d3fecf43c",
+        "android_client_info": {
+          "package_name": "com.example.flutter_turf11"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuzRayKFcFJ3vDdJ0JbNXVboNFDYYR1ME"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
