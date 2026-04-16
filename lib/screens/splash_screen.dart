@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../core/storage_service.dart';
 import '../theme/app_theme.dart';
+import 'home_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -15,6 +18,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _ctrl;
   late Animation<double> _fade;
   late Animation<Offset> _slide;
+  bool _isRouting = false;
 
   @override
   void initState() {
@@ -26,6 +30,7 @@ class _SplashScreenState extends State<SplashScreen>
     _slide = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
     _ctrl.forward();
+    _bootstrapSession();
   }
 
   @override
@@ -34,9 +39,42 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
+  Future<void> _bootstrapSession() async {
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    if (!mounted || _isRouting) {
+      return;
+    }
+
+    final hasToken = await StorageService.hasToken();
+    if (!mounted || _isRouting) {
+      return;
+    }
+
+    if (hasToken) {
+      _goHome();
+      return;
+    }
+
+    _goLogin();
+  }
+
   void _goLogin() {
+    if (_isRouting || !mounted) {
+      return;
+    }
+    _isRouting = true;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => LoginScreen()),
+    );
+  }
+
+  void _goHome() {
+    if (_isRouting || !mounted) {
+      return;
+    }
+    _isRouting = true;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
     );
   }
 
@@ -133,7 +171,7 @@ class _SplashScreenState extends State<SplashScreen>
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: _goLogin,
+                        onPressed: _isRouting ? null : _goLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.green,
                           foregroundColor: Colors.white,
@@ -141,7 +179,7 @@ class _SplashScreenState extends State<SplashScreen>
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           elevation: 0,
                         ),
-                        child: Text('Get Started',
+                        child: Text(_isRouting ? 'Please wait...' : 'Get Started',
                             style: GoogleFonts.dmSans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,

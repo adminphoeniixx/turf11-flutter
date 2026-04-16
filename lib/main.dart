@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_core/firebase_core.dart'; // ✅ ADD
-import 'firebase_options.dart'; // ✅ ADD
+import 'package:get/get.dart'; // ✅ ADD
+import 'package:firebase_core/firebase_core.dart';
 
+import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 
-void main() async { // ✅ async
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Firebase init (important)
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -31,7 +31,8 @@ class Turf11App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return GetMaterialApp(
+      // 🔥 CHANGE HERE
       title: 'Turf11',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,

@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../controllers/wallet_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import '../widgets/bottom_nav.dart';
 import '../widgets/shared_widgets.dart' as custom;
+import 'matches_screen.dart';
+import 'wallet_razorpay_screen.dart';
 
-import 'turf_list_screen.dart';
+import 'turf_list_screen.dart'
+    show TurfListScreen, TournamentScreen, NotificationsScreen, ProfileScreen;
 
 
 class HomeScreen extends StatefulWidget {
@@ -46,6 +51,12 @@ class _HomeContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final walletController = Get.put(WalletController());
+    if (walletController.wallet.value == null &&
+        !walletController.isLoading.value) {
+      walletController.loadWallet();
+    }
+
     return SafeArea(
       child: CustomScrollView(
         slivers: [
@@ -125,72 +136,79 @@ class _HomeContent extends StatelessWidget {
                   readOnly: true,
                   onTap: () {},
                 ),
-                // Wallet mini
+                                // Wallet mini
                 GestureDetector(
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const WalletScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const WalletRazorpayScreen()),
                   ),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.dark,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(10),
+                  child: Obx(() {
+                    final wallet = walletController.wallet.value;
+                    final balanceText = wallet == null
+                        ? '...'
+                        : '₹${wallet.walletBalance.toStringAsFixed(2)}';
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.dark,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(LucideIcons.wallet,
+                                size: 18,
+                                color: Colors.white),
                           ),
-                          child: const Icon(LucideIcons.wallet,
-                              size: 18,
-                              color: Colors.white),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Turf11 Wallet',
-                                style: GoogleFonts.dmSans(
-                                    fontSize: 10,
-                                    color: Colors.white.withOpacity(0.6),
-                                    fontWeight: FontWeight.w600)),
-                            Text('₹240.00',
-                                style: GoogleFonts.dmSans(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white)),
-                          ],
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: AppColors.green,
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Row(
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(LucideIcons.plus,
-                                  size: 12, color: Colors.white),
-                              const SizedBox(width: 4),
-                              Text('Add Money',
+                              Text('Turf11 Wallet',
                                   style: GoogleFonts.dmSans(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
+                                      fontSize: 10,
+                                      color: Colors.white.withOpacity(0.6),
+                                      fontWeight: FontWeight.w600)),
+                              Text(balanceText,
+                                  style: GoogleFonts.dmSans(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w800,
                                       color: Colors.white)),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: AppColors.green,
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(LucideIcons.plus,
+                                    size: 12, color: Colors.white),
+                                const SizedBox(width: 4),
+                                Text('Add Money',
+                                    style: GoogleFonts.dmSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                 ),
                 // Quick actions
                 Row(
@@ -543,3 +561,4 @@ class _TurfCard extends StatelessWidget {
     );
   }
 }
+

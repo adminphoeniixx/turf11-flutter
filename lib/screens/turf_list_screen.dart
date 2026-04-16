@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:turf11/controllers/auth_controller.dart';
+import 'package:turf11/controllers/wallet_controller.dart';
+import 'package:turf11/data/models/wallet_model.dart';
+import 'package:turf11/screens/login_screen.dart';
+import 'package:turf11/screens/wallet_razorpay_screen.dart';
 import '../theme/app_theme.dart';
+import 'package:get/get.dart';
+
 import '../widgets/shared_widgets.dart';
 import '../widgets/shared_widgets.dart' as custom;
 
@@ -917,9 +924,17 @@ class WalletScreen extends StatefulWidget {
 }
 
 class _WalletScreenState extends State<WalletScreen> {
+  late final WalletController _walletController;
   int _selectedAmt = 1;
   static const _amounts = [100, 500, 1000, 2000, 5000];
   static const _bonuses = [5, 30, 80, 200, 600];
+
+  @override
+  void initState() {
+    super.initState();
+    _walletController = Get.put(WalletController());
+    _walletController.loadWallet();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1650,7 +1665,8 @@ class ProfileScreen extends StatelessWidget {
                         _menuItem(LucideIcons.wallet, 'Wallet & Payments',
                             onTap: () => Navigator.of(context).push(
                                   MaterialPageRoute(
-                                      builder: (_) => const WalletScreen()),
+                                      builder: (_) =>
+                                          const WalletRazorpayScreen()),
                                 )),
                         const AppDivider(),
                         _menuItem(LucideIcons.mapPin, 'Add My Turf',
@@ -1663,10 +1679,28 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   AppButton(
-                    label: 'Sign Out',
+                    label: 'Log Out',
                     color: AppColors.red,
                     isOutline: true,
-                    onTap: () {},
+                    onTap: () {
+                      final controller = Get.find<AuthController>();
+
+                      Get.defaultDialog(
+                        title: "Logout",
+                        middleText: "Are you sure you want to logout?",
+                        textConfirm: "Yes",
+                        textCancel: "No",
+                        confirmTextColor: Colors.white,
+                        buttonColor: AppColors.red,
+                        onConfirm: () async {
+                          Get.back(); // close dialog
+
+                          await controller.logout();
+
+                          Get.offAll(() => LoginScreen());
+                        },
+                      );
+                    },
                   ),
                 ],
               ),

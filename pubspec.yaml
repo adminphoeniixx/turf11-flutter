@@ -30,6 +30,11 @@ dependencies:
   # Date Formatting
   intl: ^0.19.0
   change_app_package_name: ^1.5.0
+  shared_preferences: ^2.5.5
+  get: ^4.6.6
+  dio: ^5.4.0
+  geolocator: ^13.0.2
+  razorpay_flutter: ^1.4.4
 
 dev_dependencies:
   flutter_test:
