@@ -111,18 +111,22 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                             itemCount: matches.length,
                             itemBuilder: (context, index) {
                               final match = matches[index];
+                              final isJoined = controller.isMatchJoined(
+                                match.id,
+                                fallback: selectedTab == 1,
+                              );
                               return _MatchCard(
                                 match: match,
                                 actionLabel: selectedTab == 0
-                                    ? 'Join Match'
+                                    ? (isJoined ? 'View Details' : 'Join Match')
                                     : 'View Details',
                                 onTap: () => _openDetail(
                                       context,
                                       match.id,
-                                      isJoined: selectedTab == 1,
+                                      isJoined: isJoined,
                                     ),
                                 onAction: () async {
-                                  if (selectedTab == 0) {
+                                  if (selectedTab == 0 && !isJoined) {
                                     final success =
                                         await controller.joinMatch(match.id);
                                     if (!success) {
@@ -135,7 +139,10 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                                   _openDetail(
                                     context,
                                     match.id,
-                                    isJoined: true,
+                                    isJoined: controller.isMatchJoined(
+                                      match.id,
+                                      fallback: isJoined,
+                                    ),
                                   );
                                 },
                               );
@@ -520,7 +527,6 @@ class MatchDetailScreen extends StatefulWidget {
 
 class _MatchDetailScreenState extends State<MatchDetailScreen> {
   late final MatchController controller;
-  late bool isJoined;
 
   @override
   void initState() {
@@ -528,10 +534,6 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
     controller = Get.isRegistered<MatchController>()
         ? Get.find<MatchController>()
         : Get.put(MatchController());
-    isJoined = controller.isMatchJoined(
-      widget.matchId,
-      fallback: widget.initiallyJoined,
-    );
     WidgetsBinding.instance.addPostFrameCallback(
         (_) => controller.loadMatchDetail(widget.matchId));
   }
@@ -638,8 +640,12 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                             ],
                           ),
                         ),
-                        Obx(
-                          () => AppButton(
+                        Obx(() {
+                          final isJoined = controller.isMatchJoined(
+                            widget.matchId,
+                            fallback: widget.initiallyJoined,
+                          );
+                          return AppButton(
                             label: controller.isJoinLoading.value
                                 ? 'Updating...'
                                 : isJoined
@@ -656,19 +662,11 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                                         ? await controller.leaveMatch(match.id)
                                         : await controller.joinMatch(match.id);
                                     if (success) {
-                                      final nextJoinedState = !isJoined;
-                                      controller.setMatchJoinedState(
-                                        match.id,
-                                        nextJoinedState,
-                                      );
-                                      setState(() {
-                                        isJoined = nextJoinedState;
-                                      });
                                       await controller.loadMyMatches();
                                     }
                                   },
-                          ),
-                        ),
+                          );
+                        }),
                       ],
                     ),
                   );

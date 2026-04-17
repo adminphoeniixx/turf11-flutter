@@ -83,6 +83,36 @@ class ApiClient {
     }
   }
 
+  static Future<Response<dynamic>> put(String url, {dynamic data}) async {
+    final token = await StorageService.getToken();
+    final headers = {
+      if (token != null && token.isNotEmpty) "Authorization": "Bearer $token",
+    };
+
+    _logRequest(
+      method: "PUT",
+      url: url,
+      headers: headers,
+      data: data,
+    );
+
+    try {
+      final response = await dio.put(
+        url,
+        data: data,
+        options: Options(
+          headers: headers,
+        ),
+      );
+      _logResponse(method: "PUT", url: url, response: response);
+      return response;
+    } on DioException catch (e) {
+      await _handleUnauthorized(e);
+      _logDioError(method: "PUT", url: url, error: e);
+      throw Exception(_formatError(e));
+    }
+  }
+
   static Future<void> _handleUnauthorized(DioException error) async {
     if (error.response?.statusCode == 401) {
       await StorageService.clear();

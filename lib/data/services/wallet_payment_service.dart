@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../core/api_client.dart';
 import '../../core/api_constants.dart';
 import '../models/wallet_payment_model.dart';
@@ -6,11 +8,14 @@ class WalletPaymentService {
   static Future<WalletTopupOrder> createTopupOrder({
     required int amount,
   }) async {
-    final res = await ApiClient.post(
-      ApiConstants.walletTopupOrder,
-      data: {
-        'amount': amount,
-      },
+    final payload = {
+      'amount': amount,
+    };
+
+    final res = await _postWithFallback(
+      primaryPath: ApiConstants.walletTopupOrder,
+      fallbackPath: ApiConstants.walletTopupOrderLegacy,
+      data: payload,
     );
 
     return WalletTopupOrder.fromJson(_toMap(res.data));
@@ -20,15 +25,13 @@ class WalletPaymentService {
     required String orderId,
     required String paymentId,
     required String signature,
-    required int amount,
   }) async {
     final res = await ApiClient.post(
       ApiConstants.walletTopupVerify,
       data: {
-        'order_id': orderId,
-        'payment_id': paymentId,
-        'signature': signature,
-        'amount': amount,
+        'gateway_order_id': orderId,
+        'gateway_payment_id': paymentId,
+        'razorpay_signature': signature,
       },
     );
 
@@ -45,5 +48,21 @@ class WalletPaymentService {
       return Map<String, dynamic>.from(data);
     }
     return <String, dynamic>{};
+  }
+
+  static Future<Response<dynamic>> _postWithFallback({
+    required String primaryPath,
+    required String fallbackPath,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      return await ApiClient.post(primaryPath, data: data);
+    } on DioException catch (error) {
+      if (error.response?.statusCode != 404) {
+        rethrow;
+      }
+
+      return ApiClient.post(fallbackPath, data: data);
+    }
   }
 }

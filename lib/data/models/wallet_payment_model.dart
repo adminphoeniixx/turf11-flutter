@@ -24,7 +24,11 @@ class WalletTopupOrder {
   factory WalletTopupOrder.fromJson(Map<String, dynamic> json) {
     final root = _readMap(json['data']).isNotEmpty ? _readMap(json['data']) : json;
     final prefill = _readMap(root['prefill']);
-    final notes = _readMap(root['notes']);
+    final notes = {
+      ..._readMap(root['notes']),
+      if (_readString(root['txn_code']).isNotEmpty)
+        'txn_code': _readString(root['txn_code']),
+    };
 
     return WalletTopupOrder(
       keyId: _readString(
@@ -36,11 +40,14 @@ class WalletTopupOrder {
       amount: _readInt(root['amount']),
       currency: _readString(root['currency'], fallback: 'INR'),
       name: _readString(
-        root['name'] ?? root['merchant_name'] ?? root['app_name'],
+        prefill['name'] ??
+            root['name'] ??
+            root['merchant_name'] ??
+            root['app_name'],
         fallback: 'Turf11',
       ),
       description: _readString(
-        root['description'],
+        root['description'] ?? root['txn_code'],
         fallback: 'Wallet top-up',
       ),
       contact: _readString(

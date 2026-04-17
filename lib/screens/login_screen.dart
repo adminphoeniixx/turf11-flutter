@@ -12,8 +12,9 @@ import 'register_screen.dart';
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
 
-  final controller =
-      Get.isRegistered<AuthController>() ? Get.find<AuthController>() : Get.put(AuthController());
+  final controller = Get.isRegistered<AuthController>()
+      ? Get.find<AuthController>()
+      : Get.put(AuthController());
   final TextEditingController mobileController = TextEditingController();
 
   @override
@@ -27,10 +28,19 @@ class LoginScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 🔥 SAME UI (no change)
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: const TurfFieldBanner(),
+              const SizedBox(height: 24),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 18,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.dark,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: const AppLogo(width: 170),
+                ),
               ),
               const SizedBox(height: 28),
 
@@ -55,32 +65,58 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 4),
 
               // 🔥 ONLY LOGIC CHANGED HERE
-              AppButton(
-                label: 'Send OTP',
-                trailingIcon: Icons.arrow_forward,
-                onTap: () async {
-                  final phone = mobileController.text.trim();
+              Obx(
+                () => AppButton(
+                  label: controller.isLoading.value ? 'Sending OTP...' : 'Send OTP',
+                  trailingIcon:
+                      controller.isLoading.value ? null : Icons.arrow_forward,
+                  onTap: controller.isLoading.value
+                      ? null
+                      : () async {
+                          FocusScope.of(context).unfocus();
+                          final phone = mobileController.text.trim();
 
-                  if (phone.length != 10) {
-                    Get.snackbar("Error", "Enter valid number");
-                    return;
-                  }
+                          if (phone.length != 10) {
+                            Get.snackbar("Error", "Enter valid number");
+                            return;
+                          }
 
-                  final sent = await controller.sendOtp(phone, true);
-                  if (!sent) {
-                    return;
-                  }
+                          final sent = await controller.sendOtp(phone, true);
+                          if (!sent) {
+                            return;
+                          }
 
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => OtpScreen(
-                        phone: phone,
-                        isLogin: true,
-                      ),
+                          if (!context.mounted) {
+                            return;
+                          }
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => OtpScreen(
+                                phone: phone,
+                                isLogin: true,
+                              ),
+                            ),
+                          );
+                        },
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Obx(
+                () => AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: controller.isLoading.value ? 1 : 0,
+                  child: Text(
+                    'Please wait, OTP request is being processed.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: AppColors.muted,
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
 
               const SizedBox(height: 18),

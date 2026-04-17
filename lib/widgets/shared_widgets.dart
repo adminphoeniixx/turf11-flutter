@@ -3,6 +3,29 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../theme/app_theme.dart';
 
+class AppLogo extends StatelessWidget {
+  final double width;
+  final double? height;
+  final BoxFit fit;
+
+  const AppLogo({
+    super.key,
+    this.width = 180,
+    this.height,
+    this.fit = BoxFit.contain,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/images/app_icon.png',
+      width: width,
+      height: height,
+      fit: fit,
+    );
+  }
+}
+
 // ─── PRIMARY BUTTON ───────────────────────────────────────────────────────────
 class AppButton extends StatelessWidget {
   final String label;
@@ -575,35 +598,21 @@ class TurfFieldBanner extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  RichText(
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'Turf',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: -1,
-                          ),
-                        ),
-                        TextSpan(
-                          text: '11',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: const Color(0xFF5DBB50),
-                            letterSpacing: -1,
-                          ),
-                        ),
-                      ],
+                  SizedBox(
+                    height: 38,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: const AppLogo(width: 120),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text('Book · Play · Compete',
-                      style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          color: Colors.white.withOpacity(0.8))),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Book. Play. Compete.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
                 ],
               ),
             ),

@@ -42,7 +42,6 @@ class WalletController extends GetxController {
     required String orderId,
     required String paymentId,
     required String signature,
-    required int amount,
   }) async {
     try {
       isTopupLoading.value = true;
@@ -50,7 +49,6 @@ class WalletController extends GetxController {
         orderId: orderId,
         paymentId: paymentId,
         signature: signature,
-        amount: amount,
       );
       await loadWallet();
       return message;

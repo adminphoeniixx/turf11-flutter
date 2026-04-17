@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../controllers/wallet_controller.dart';
@@ -410,7 +411,7 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
 
   String _formatSubtitle(WalletTransaction txn) {
     final parts = <String>[
-      if (txn.createdAt.trim().isNotEmpty) txn.createdAt.trim(),
+      if (txn.createdAt.trim().isNotEmpty) _formatDateTime(txn.createdAt),
       if (txn.status.trim().isNotEmpty) txn.status.trim(),
     ];
 
@@ -419,5 +420,19 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
     }
 
     return parts.join(' · ');
+  }
+
+  String _formatDateTime(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) {
+      return '';
+    }
+
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) {
+      return value;
+    }
+
+    return DateFormat('dd MMM yyyy, h:mm a').format(parsed.toLocal());
   }
 }

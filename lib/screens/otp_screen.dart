@@ -27,7 +27,9 @@ class OtpScreen extends StatefulWidget {
 }
 
 class _OtpScreenState extends State<OtpScreen> {
-  final controller = Get.find<AuthController>();
+  final controller = Get.isRegistered<AuthController>()
+      ? Get.find<AuthController>()
+      : Get.put(AuthController());
 
   final _controllers = List.generate(6, (_) => TextEditingController());
   final _focusNodes = List.generate(6, (_) => FocusNode());
@@ -173,64 +175,111 @@ class _OtpScreenState extends State<OtpScreen> {
                     ),
 
                     // VERIFY BUTTON
-                    AppButton(
-                      label: widget.isLogin ? 'Verify & Login' : 'Verify & Register',
-                      trailingIcon: Icons.arrow_forward,
-                      onTap: () async {
-                        final otp = _controllers.map((e) => e.text).join();
+                    Obx(
+                      () => AppButton(
+                        label: controller.isLoading.value
+                            ? (widget.isLogin
+                                ? 'Verifying...'
+                                : 'Creating account...')
+                            : (widget.isLogin
+                                ? 'Verify & Login'
+                                : 'Verify & Register'),
+                        trailingIcon:
+                            controller.isLoading.value ? null : Icons.arrow_forward,
+                        onTap: controller.isLoading.value
+                            ? null
+                            : () async {
+                                FocusScope.of(context).unfocus();
+                                final otp = _controllers.map((e) => e.text).join();
 
-                        if (otp.length != 6) {
-                          Get.snackbar("Error", "Enter valid OTP");
-                          return;
-                        }
+                                if (otp.length != 6) {
+                                  Get.snackbar("Error", "Enter valid OTP");
+                                  return;
+                                }
 
-                        bool isSuccess = false;
-                        if (widget.isLogin) {
-                          isSuccess = await controller.login(widget.phone, otp);
-                        } else {
-                          final payload = <String, dynamic>{
-                            ...?widget.registrationData,
-                            "phone": widget.phone,
-                            "otp": otp,
-                            "device_name": "flutter",
-                          };
-                          isSuccess = await controller.register(payload);
-                        }
+                                bool isSuccess = false;
+                                if (widget.isLogin) {
+                                  isSuccess =
+                                      await controller.login(widget.phone, otp);
+                                } else {
+                                  final payload = <String, dynamic>{
+                                    ...?widget.registrationData,
+                                    "phone": widget.phone,
+                                    "otp": otp,
+                                    "device_name": "flutter",
+                                  };
+                                  isSuccess = await controller.register(payload);
+                                }
 
-                        if (!isSuccess) {
-                          return;
-                        }
+                                if (!isSuccess) {
+                                  return;
+                                }
 
-                        Get.offAll(() => const HomeScreen());
-                      },
+                                Get.offAll(() => const HomeScreen());
+                              },
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Obx(
+                      () => AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: controller.isLoading.value ? 1 : 0,
+                        child: Text(
+                          'Verifying OTP, please wait.',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 16),
 
                     // RESEND OTP
                     Center(
-                      child: GestureDetector(
-                        onTap: () async {
-                          final resent = await controller.resendOtp(widget.phone);
-                          if (resent && mounted) {
-                            setState(() => _seconds = 120);
-                            _startTimer();
-                          }
-                        },
-                        child: Text.rich(TextSpan(children: [
-                          TextSpan(
-                            text: "Didn't receive it? ",
-                            style: GoogleFonts.dmSans(
-                                fontSize: 12, color: AppColors.muted),
+                      child: Obx(
+                        () => GestureDetector(
+                          onTap: _seconds > 0 || controller.isLoading.value
+                              ? null
+                              : () async {
+                                  final resent =
+                                      await controller.resendOtp(widget.phone);
+                                  if (resent && mounted) {
+                                    setState(() => _seconds = 120);
+                                    _startTimer();
+                                  }
+                                },
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: "Didn't receive it? ",
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: AppColors.muted,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: controller.isLoading.value
+                                      ? 'Please wait'
+                                      : (_seconds > 0
+                                          ? 'Resend in $_timerStr'
+                                          : 'Resend OTP'),
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: _seconds > 0 || controller.isLoading.value
+                                        ? AppColors.muted2
+                                        : AppColors.green,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          TextSpan(
-                            text: 'Resend OTP',
-                            style: GoogleFonts.dmSans(
-                                fontSize: 12,
-                                color: AppColors.green,
-                                fontWeight: FontWeight.w600),
-                          ),
-                        ])),
+                        ),
                       ),
                     ),
 

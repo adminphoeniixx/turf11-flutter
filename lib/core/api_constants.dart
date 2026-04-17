@@ -8,14 +8,16 @@ class ApiConstants {
   static const register = "/auth/register";
   static const checkPhone = "/auth/check-phone";
   static const logout = "/auth/logout";
+  static const profile = "/profile";
 
   // MATCHES
   static const matches = "/matches";
   static const nearbyMatches = "/matches/nearby";
   static const myMatches = "/matches/my";
   static const wallet = "/wallet";
-  static const walletTopupOrder = "/wallet/topup/order";
-  static const walletTopupVerify = "/wallet/topup/verify";
+  static const walletTopupOrder = "/wallet/topup";
+  static const walletTopupOrderLegacy = "/wallet/topup/order";
+  static const walletTopupVerify = "/wallet/verify";
 
   static String matchDetail(dynamic matchId) => "/matches/$matchId";
   static String joinMatch(dynamic matchId) => "/matches/$matchId/join";

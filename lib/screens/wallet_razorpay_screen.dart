@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
@@ -289,14 +290,17 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
   }
 
   Future<void> _startWalletTopup() async {
-    final amount = _selectedAmount();
-    if (amount < 1) {
+    final amountInRupees = _selectedAmount();
+    if (amountInRupees < 1) {
       Get.snackbar('Invalid amount', 'Please enter a valid amount.');
       return;
     }
 
     try {
-      final order = await _walletController.createTopupOrder(amount: amount);
+      final amountInPaise = amountInRupees * 100;
+      final order = await _walletController.createTopupOrder(
+        amount: amountInPaise,
+      );
       final keyId =
           order.keyId.isNotEmpty ? order.keyId : _fallbackRazorpayKey;
 
@@ -323,7 +327,7 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
       return;
     }
 
-    final paymentId = response.paymentId;
+      final paymentId = response.paymentId;
     final signature = response.signature;
     final orderId = response.orderId ?? order.orderId;
 
@@ -340,7 +344,6 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
         orderId: orderId,
         paymentId: paymentId,
         signature: signature,
-        amount: order.amount,
       );
       _pendingOrder = null;
       Get.snackbar('Success', message);
@@ -541,7 +544,7 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
 
   String _formatSubtitle(WalletTransaction txn) {
     final parts = <String>[
-      if (txn.createdAt.trim().isNotEmpty) txn.createdAt.trim(),
+      if (txn.createdAt.trim().isNotEmpty) _formatDateTime(txn.createdAt),
       if (txn.status.trim().isNotEmpty) txn.status.trim(),
     ];
 
@@ -550,6 +553,20 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
     }
 
     return parts.join(' | ');
+  }
+
+  String _formatDateTime(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) {
+      return '';
+    }
+
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) {
+      return value;
+    }
+
+    return DateFormat('dd MMM yyyy, h:mm a').format(parsed.toLocal());
   }
 
   String _readableError(Object error) {

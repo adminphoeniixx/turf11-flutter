@@ -104,20 +104,28 @@ class AuthController extends GetxController {
 
   // 🔹 LOGOUT
   Future<bool> logout() async {
+    String? errorMessage;
+
     try {
       isLoading.value = true;
-
       await AuthService.logout();
-      await StorageService.clear();
-
-      Get.snackbar("Success", "Logged out successfully");
-      return true;
     } catch (e) {
-      Get.snackbar("Error", _readableError(e));
-      return false;
+      errorMessage = _readableError(e);
     } finally {
+      await StorageService.clear();
       isLoading.value = false;
     }
+
+    if (errorMessage != null) {
+      Get.snackbar(
+        "Logged out",
+        "Session cleared on this device. Server response: $errorMessage",
+      );
+      return true;
+    }
+
+    Get.snackbar("Success", "Logged out successfully");
+    return true;
   }
 
   String _readableError(Object error) {
