@@ -274,6 +274,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             _selectedDob = pickedDate;
             dobController.text = DateFormat('dd MMM yyyy').format(pickedDate);
           });
+          
         }
       },
       decoration: const InputDecoration(
