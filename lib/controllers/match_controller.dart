@@ -34,9 +34,14 @@ class MatchController extends GetxController {
       late final double requestLat;
       late final double requestLng;
       if (lat == null || lng == null) {
-        final location = await _resolveLocation();
-        requestLat = location.latitude;
-        requestLng = location.longitude;
+        // final location = await _resolveLocation();
+        // requestLat = location.latitude;
+        // requestLng = location.longitude;
+        currentLat.value = defaultLat;
+        currentLng.value = defaultLng;
+        isUsingFallbackLocation.value = true;
+        requestLat = defaultLat;
+        requestLng = defaultLng;
       } else {
         currentLat.value = lat;
         currentLng.value = lng;
@@ -137,22 +142,20 @@ class MatchController extends GetxController {
   }
 
   Future<void> refreshAll() async {
-    final location = await _resolveLocation();
     await Future.wait([
       loadNearbyMatches(
-        lat: location.latitude,
-        lng: location.longitude,
+        lat: defaultLat,
+        lng: defaultLng,
       ),
       loadMyMatches(),
     ]);
   }
 
   Future<void> _refreshAfterMutation(int matchId) async {
-    final location = await _resolveLocation();
     await Future.wait([
       loadNearbyMatches(
-        lat: location.latitude,
-        lng: location.longitude,
+        lat: defaultLat,
+        lng: defaultLng,
       ),
       loadMyMatches(),
       loadMatchDetail(matchId),

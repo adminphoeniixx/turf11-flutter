@@ -4,12 +4,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../controllers/profile_controller.dart';
+import '../controllers/match_controller.dart';
+import '../controllers/turf_controller.dart';
 import '../controllers/wallet_controller.dart';
 import '../data/models/profile_model.dart';
+import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bottom_nav.dart';
 import '../widgets/shared_widgets.dart';
-import '../widgets/shared_widgets.dart' as custom;
+import 'booking_screen.dart';
 import 'matches_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
@@ -62,9 +65,31 @@ class _HomeContent extends StatelessWidget {
     return 'Your City';
   }
 
+  String _capitalize(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return '';
+    }
+    return normalized[0].toUpperCase() + normalized.substring(1);
+  }
+
+  String _formatHomeMatchDate(String value) {
+    final parsed = DateTime.tryParse(value.trim());
+    if (parsed == null) {
+      return value.trim().isEmpty ? 'Date TBD' : value;
+    }
+    return '${parsed.day}/${parsed.month}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final walletController = Get.put(WalletController());
+    final matchController = Get.isRegistered<MatchController>()
+        ? Get.find<MatchController>()
+        : Get.put(MatchController());
+    final turfController = Get.isRegistered<TurfController>()
+        ? Get.find<TurfController>()
+        : Get.put(TurfController());
     final profileController = Get.isRegistered<ProfileController>()
         ? Get.find<ProfileController>()
         : Get.put(ProfileController());
@@ -76,6 +101,13 @@ class _HomeContent extends StatelessWidget {
     if (profileController.profile.value == null &&
         !profileController.isLoading.value) {
       profileController.loadProfile();
+    }
+    if (turfController.turfs.isEmpty && !turfController.isLoading.value) {
+      turfController.loadNearbyTurfs();
+    }
+    if (matchController.nearbyMatches.isEmpty &&
+        !matchController.isNearbyLoading.value) {
+      matchController.loadNearbyMatches();
     }
 
     return SafeArea(
@@ -177,11 +209,11 @@ class _HomeContent extends StatelessWidget {
                   );
                 }),
                 const SizedBox(height: 16),
-                custom.SearchBar(
-                  hint: 'Search turfs, players, matches...',
-                  readOnly: true,
-                  onTap: () {},
-                ),
+                // custom.SearchBar(
+                //   hint: 'Search turfs, players, matches...',
+                //   readOnly: true,
+                //   onTap: () {},
+                // ),
                 GestureDetector(
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
@@ -328,21 +360,53 @@ class _HomeContent extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                _TurfCard(
-                  name: 'DLF Arena Cricket',
-                  location: '1.2 km | Sector 29, Gurugram',
-                  price: 'Rs 800/hr',
-                  rating: '4.2 (128)',
-                  badgeText: 'Open Now',
-                  badgeColor: Colors.white.withOpacity(0.9),
-                  badgeTextColor: AppColors.green,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          const TurfListScreen(showBackButton: true),
+                Obx(() {
+                  final turfs = turfController.turfs;
+                  if (turfController.isLoading.value && turfs.isEmpty) {
+                    return const _HomeTurfShimmerCard();
+                  }
+
+                  if (turfs.isEmpty) {
+                    return SmallCard(
+                      child: Row(
+                        children: [
+                          const Icon(
+                            LucideIcons.mapPin,
+                            color: AppColors.green,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              turfController.errorMessage.value.isNotEmpty
+                                  ? turfController.errorMessage.value
+                                  : 'Nearby turf data is not available right now.',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final turf = turfs.first;
+                  return _TurfCard(
+                    turf: turf,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => BookingScreen(
+                          turfId: turf.id,
+                          turfName: turf.name,
+                          sportType: turf.sportType,
+                          pricePerHour: turf.pricePerHour.toInt(),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                }),
                 Text(
                   'Active Matches Nearby',
                   style: GoogleFonts.dmSans(
@@ -352,79 +416,114 @@ class _HomeContent extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                SmallCard(
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Obx(() {
+                  final matches = matchController.nearbyMatches;
+                  if (matchController.isNearbyLoading.value && matches.isEmpty) {
+                    return const _HomeMatchShimmerCard();
+                  }
+
+                  if (matches.isEmpty) {
+                    return SmallCard(
+                      child: Row(
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Cricket 8v8 | DLF Arena',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.dark,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Today 7 PM | 4 slots left',
-                                style: GoogleFonts.dmSans(
-                                    fontSize: 10, color: AppColors.muted),
-                              ),
-                            ],
+                          const Icon(
+                            LucideIcons.users,
+                            color: AppColors.green,
+                            size: 18,
                           ),
-                          GestureDetector(
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                  builder: (_) => const JoinMatchScreen()),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 7),
-                              decoration: BoxDecoration(
-                                color: AppColors.green,
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Text(
-                                'Join',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Nearby match data is not available right now.',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: AppColors.muted,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          ...['RS', 'AK', 'MV', 'SK'].map(
-                            (initials) => Padding(
+                    );
+                  }
+
+                  final match = matches.first;
+                  final slotsLeft = match.slotsLeft;
+                  final progress = match.fillProgress;
+                  final isJoined = matchController.isMatchJoined(match.id);
+
+                  return SmallCard(
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${_capitalize(match.sport)} ${match.format} | ${match.city}',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.dark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${_formatHomeMatchDate(match.date)} ${match.timeStart} | $slotsLeft slots left',
+                                    style: GoogleFonts.dmSans(
+                                        fontSize: 10, color: AppColors.muted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => MatchDetailScreen(
+                                    matchId: match.id,
+                                    initiallyJoined: isJoined,
+                                  ),
+                                ),
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: AppColors.green,
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                child: Text(
+                                  isJoined ? 'View' : 'Join',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: List.generate(match.maxPlayers.clamp(0, 8), (index) {
+                            final filled = index < match.joinedPlayers.clamp(0, 8);
+                            return Padding(
                               padding: const EdgeInsets.only(right: 5),
-                              child:
-                                  PlayerDot(initials: initials, filled: true),
-                            ),
-                          ),
-                          ...List.generate(
-                            4,
-                            (_) => const Padding(
-                              padding: EdgeInsets.only(right: 5),
-                              child: PlayerDot(),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      const AppProgress(0.5),
-                    ],
-                  ),
-                ),
+                              child: filled
+                                  ? const PlayerDot(initials: 'P', filled: true)
+                                  : const PlayerDot(),
+                            );
+                          }),
+                        ),
+                        const SizedBox(height: 8),
+                        AppProgress(progress),
+                      ],
+                    ),
+                  );
+                }),
                 const SizedBox(height: 4),
                 Text(
                   'Tournaments',
@@ -546,23 +645,11 @@ class _QuickAction extends StatelessWidget {
 }
 
 class _TurfCard extends StatelessWidget {
-  final String name;
-  final String location;
-  final String price;
-  final String rating;
-  final String? badgeText;
-  final Color? badgeColor;
-  final Color? badgeTextColor;
+  final TurfModel turf;
   final VoidCallback? onTap;
 
   const _TurfCard({
-    required this.name,
-    required this.location,
-    required this.price,
-    required this.rating,
-    this.badgeText,
-    this.badgeColor,
-    this.badgeTextColor,
+    required this.turf,
     this.onTap,
   });
 
@@ -589,9 +676,9 @@ class _TurfCard extends StatelessWidget {
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(22)),
               child: TurfFieldBanner(
-                badgeText: badgeText,
-                badgeColor: badgeColor,
-                badgeTextColor: badgeTextColor,
+                badgeText: turf.formatLabel,
+                badgeColor: Colors.white.withOpacity(0.9),
+                badgeTextColor: AppColors.green,
               ),
             ),
             Padding(
@@ -601,20 +688,24 @@ class _TurfCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        name,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.dark,
+                      Expanded(
+                        child: Text(
+                          turf.name,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.dark,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
-                        price,
+                        turf.priceLabel,
                         style: GoogleFonts.dmSans(
-                          fontSize: 16,
+                          fontSize: turf.hasPrice ? 16 : 12,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.green,
+                          color:
+                              turf.hasPrice ? AppColors.green : AppColors.muted,
                         ),
                       ),
                     ],
@@ -625,10 +716,12 @@ class _TurfCard extends StatelessWidget {
                       const Icon(LucideIcons.mapPin,
                           size: 10, color: AppColors.muted),
                       const SizedBox(width: 4),
-                      Text(
-                        location,
-                        style: GoogleFonts.dmSans(
-                            fontSize: 10, color: AppColors.muted),
+                      Expanded(
+                        child: Text(
+                          _locationText(turf),
+                          style: GoogleFonts.dmSans(
+                              fontSize: 10, color: AppColors.muted),
+                        ),
                       ),
                     ],
                   ),
@@ -637,7 +730,7 @@ class _TurfCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Rating $rating',
+                        '${turf.ratingLabel} ${turf.reviewLabel}',
                         style: GoogleFonts.dmSans(
                             fontSize: 12, color: AppColors.green),
                       ),
@@ -664,6 +757,157 @@ class _TurfCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  String _locationText(TurfModel turf) {
+    final distance = turf.distanceKm != null && turf.distanceKm! > 0
+        ? '${turf.distanceKm!.toStringAsFixed(1)} km | '
+        : '';
+    final address = turf.address.trim().isNotEmpty ? turf.address : turf.location;
+    return '$distance$address';
+  }
+}
+
+class _HomeTurfShimmerCard extends StatelessWidget {
+  const _HomeTurfShimmerCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.09),
+            blurRadius: 16,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            child: const ShimmerBox(
+              width: double.infinity,
+              height: 120,
+              borderRadius: BorderRadius.zero,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: const [
+                Row(
+                  children: [
+                    Expanded(
+                      child: ShimmerBox(
+                        width: double.infinity,
+                        height: 18,
+                        borderRadius: BorderRadius.all(Radius.circular(8)),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    ShimmerBox(
+                      width: 78,
+                      height: 18,
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10),
+                ShimmerBox(
+                  width: double.infinity,
+                  height: 12,
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                ),
+                SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    ShimmerBox(
+                      width: 110,
+                      height: 12,
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
+                    ),
+                    ShimmerBox(
+                      width: 92,
+                      height: 32,
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeMatchShimmerCard extends StatelessWidget {
+  const _HomeMatchShimmerCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return SmallCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ShimmerBox(
+                      width: 180,
+                      height: 16,
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
+                    ),
+                    SizedBox(height: 8),
+                    ShimmerBox(
+                      width: 160,
+                      height: 12,
+                      borderRadius: BorderRadius.all(Radius.circular(8)),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 12),
+              ShimmerBox(
+                width: 68,
+                height: 30,
+                borderRadius: BorderRadius.all(Radius.circular(30)),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              ShimmerBox(width: 30, height: 30, shape: BoxShape.circle),
+              SizedBox(width: 5),
+              ShimmerBox(width: 30, height: 30, shape: BoxShape.circle),
+              SizedBox(width: 5),
+              ShimmerBox(width: 30, height: 30, shape: BoxShape.circle),
+              SizedBox(width: 5),
+              ShimmerBox(width: 30, height: 30, shape: BoxShape.circle),
+              SizedBox(width: 5),
+              ShimmerBox(width: 30, height: 30, shape: BoxShape.circle),
+            ],
+          ),
+          SizedBox(height: 10),
+          ShimmerBox(
+            width: double.infinity,
+            height: 5,
+            borderRadius: BorderRadius.all(Radius.circular(4)),
+          ),
+        ],
       ),
     );
   }

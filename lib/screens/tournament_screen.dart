@@ -44,7 +44,7 @@ class TournamentScreen extends StatelessWidget {
               ),
             ),
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
+              padding: EdgeInsets.symmetric(horizontal: 20,vertical: 15),
               child: ChipRow(['Open', 'My Team', 'Completed']),
             ),
             Expanded(

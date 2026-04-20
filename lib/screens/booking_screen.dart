@@ -1,40 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../controllers/booking_controller.dart';
+import '../controllers/turf_controller.dart';
+import '../data/models/booking_create_model.dart';
+import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'matches_screen.dart';
+import 'my_bookings_screen.dart';
+import 'wallet_razorpay_screen.dart';
 
 class BookingScreen extends StatefulWidget {
-  const BookingScreen({super.key});
+  final int turfId;
+  final String turfName;
+  final String sportType;
+  final int pricePerHour;
+
+  const BookingScreen({
+    super.key,
+    required this.turfId,
+    required this.turfName,
+    this.sportType = 'cricket',
+    this.pricePerHour = 800,
+  });
 
   @override
   State<BookingScreen> createState() => _BookingScreenState();
 }
 
 class _BookingScreenState extends State<BookingScreen> {
-  int _selectedDay = 16;
-  int _selectedSlot = 4;
+  late final BookingController _bookingController;
+  late final TurfController _turfController;
+  late DateTime _selectedDate;
+  int? _selectedSlotId;
   int _selectedPeople = 7;
-
-  static const _slots = [
-    '04:00-06:00',
-    '06:00-08:00',
-    '08:00-10:00',
-    '10:00-12:00',
-    '12:00-14:00',
-    '16:00-18:00',
-    '18:00-20:00',
-    '20:00-22:00',
-  ];
-
-  static const _takenSlots = {2};
   static const _people = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
 
   @override
+  void initState() {
+    super.initState();
+    _bookingController = Get.isRegistered<BookingController>()
+        ? Get.find<BookingController>()
+        : Get.put(BookingController());
+    _turfController = Get.isRegistered<TurfController>()
+        ? Get.find<TurfController>()
+        : Get.put(TurfController());
+    _selectedDate = DateTime.now();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _turfController.loadTurfDetail(widget.turfId);
+      _loadSlots();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final selectedSlot = _slots[_selectedSlot];
+    final selectedPlayers = _people[_selectedPeople];
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -42,98 +66,91 @@ class _BookingScreenState extends State<BookingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BackRow(label: 'Book Your Slot', onBack: () => Navigator.pop(context)),
+            BackRow(
+              label: 'Book Your Slot',
+              onBack: () => Navigator.pop(context),
+            ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.09),
-                            blurRadius: 16,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Icon(LucideIcons.chevronLeft, size: 18, color: AppColors.dark),
-                          Text(
-                            'April 2026',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.dark,
-                            ),
-                          ),
-                          const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.dark),
-                        ],
-                      ),
-                    ),
+                    _detailHeroCard(),
                     const SizedBox(height: 10),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 7,
-                        mainAxisSpacing: 4,
-                      ),
-                      itemCount: 35,
-                      itemBuilder: (context, index) {
-                        if (index < 7) {
-                          const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-                          return Center(
-                            child: Text(
-                              days[index],
-                              style: GoogleFonts.dmSans(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.muted2,
+                    SizedBox(
+                      height: 90,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: 7,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, index) {
+                          final date = DateTime.now().add(Duration(days: index));
+                          final isSelected =
+                              _isSameDate(date, _selectedDate);
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedDate = date;
+                                _selectedSlotId = null;
+                              });
+                              _loadSlots();
+                            },
+                            child: Container(
+                              width: 66,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.dark
+                                    : AppColors.white,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.dark
+                                      : AppColors.border,
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    DateFormat('E').format(date).toUpperCase(),
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: isSelected
+                                          ? Colors.white70
+                                          : AppColors.muted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    DateFormat('dd').format(date),
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.dark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    DateFormat('MMM').format(date),
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 10,
+                                      color: isSelected
+                                          ? Colors.white70
+                                          : AppColors.muted2,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
-                        }
-
-                        final day = index - 6;
-                        final isSelected = day == _selectedDay;
-                        final isToday = day == 17;
-
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedDay = day),
-                          child: Container(
-                            margin: const EdgeInsets.all(2),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.dark : Colors.transparent,
-                              shape: BoxShape.circle,
-                              border: isToday && !isSelected
-                                  ? Border.all(color: AppColors.green, width: 1.5)
-                                  : null,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '$day',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : isToday
-                                          ? AppColors.green
-                                          : AppColors.muted,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+                        },
+                      ),
                     ),
                     const SizedBox(height: 14),
                     Text(
@@ -145,45 +162,102 @@ class _BookingScreenState extends State<BookingScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: List.generate(_slots.length, (index) {
-                        final isTaken = _takenSlots.contains(index);
-                        final isSelected = index == _selectedSlot && !isTaken;
+                    Obx(() {
+                      if (_turfController.isSlotsLoading.value) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
 
-                        return GestureDetector(
-                          onTap: isTaken ? null : () => setState(() => _selectedSlot = index),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isTaken
-                                  ? AppColors.bg
-                                  : isSelected
-                                      ? AppColors.dark
-                                      : AppColors.white,
-                              borderRadius: BorderRadius.circular(30),
-                              border: Border.all(
-                                color: isSelected ? AppColors.dark : AppColors.border,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Text(
-                              _slots[index],
-                              style: GoogleFonts.dmSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: isTaken
-                                    ? AppColors.muted2
-                                    : isSelected
-                                        ? Colors.white
-                                        : AppColors.muted,
-                              ),
+                      if (_turfController.slotsErrorMessage.value.isNotEmpty &&
+                          _turfController.slots.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            _turfController.slotsErrorMessage.value,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: AppColors.red,
                             ),
                           ),
                         );
-                      }),
-                    ),
+                      }
+
+                      if (_turfController.slots.isEmpty) {
+                        return Text(
+                          'No slots available for this date.',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: AppColors.muted,
+                          ),
+                        );
+                      }
+
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _turfController.slots.map((slot) {
+                          final isSelected = slot.id == _selectedSlotId;
+                          return GestureDetector(
+                            onTap: !slot.isAvailable
+                                ? null
+                                : () => setState(() => _selectedSlotId = slot.id),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: !slot.isAvailable
+                                    ? AppColors.bg
+                                    : isSelected
+                                        ? AppColors.dark
+                                        : AppColors.white,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.dark
+                                      : AppColors.border,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    slot.label,
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: !slot.isAvailable
+                                          ? AppColors.muted2
+                                          : isSelected
+                                              ? Colors.white
+                                              : AppColors.dark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    slot.price > 0
+                                        ? 'Rs ${_formatAmount(slot.price)}'
+                                        : 'Available',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 10,
+                                      color: !slot.isAvailable
+                                          ? AppColors.muted2
+                                          : isSelected
+                                              ? Colors.white70
+                                              : AppColors.green,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    }),
                     const SizedBox(height: 18),
                     Text(
                       'No. of People',
@@ -197,7 +271,8 @@ class _BookingScreenState extends State<BookingScreen> {
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 5,
                         childAspectRatio: 2.2,
                         crossAxisSpacing: 6,
@@ -211,20 +286,26 @@ class _BookingScreenState extends State<BookingScreen> {
                           onTap: () => setState(() => _selectedPeople = index),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isSelected ? AppColors.dark : AppColors.white,
+                              color: isSelected
+                                  ? AppColors.dark
+                                  : AppColors.white,
                               borderRadius: BorderRadius.circular(30),
                               border: Border.all(
-                                color: isSelected ? AppColors.dark : AppColors.border,
+                                color: isSelected
+                                    ? AppColors.dark
+                                    : AppColors.border,
                                 width: 1.5,
                               ),
                             ),
                             child: Center(
                               child: Text(
-                                '${_people[index].toString().padLeft(2, '0')}',
+                                _people[index].toString().padLeft(2, '0'),
                                 style: GoogleFonts.dmSans(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: isSelected ? Colors.white : AppColors.dark,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : AppColors.dark,
                                 ),
                               ),
                             ),
@@ -233,48 +314,33 @@ class _BookingScreenState extends State<BookingScreen> {
                       },
                     ),
                     const SizedBox(height: 18),
-                    SmallCard(
-                      child: Column(
-                        children: [
-                          const InfoRow(label: 'Turf', value: 'DLF Arena Cricket'),
-                          InfoRow(label: 'Date & Time', value: 'Apr $_selectedDay, $selectedSlot'),
-                          InfoRow(label: 'Players', value: '${_people[_selectedPeople]} selected'),
-                          const AppDivider(),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Total',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.dark,
+                    _detailSections(),
+                    const SizedBox(height: 18),
+                    _summaryCard(selectedPlayers),
+                    Obx(
+                      () => AppButton(
+                        label: _bookingController.isCreateLoading.value
+                            ? 'Confirming...'
+                            : 'Confirm Booking',
+                        trailingIcon: _bookingController.isCreateLoading.value
+                            ? null
+                            : Icons.arrow_forward,
+                        onTap: _bookingController.isCreateLoading.value
+                            ? null
+                            : () => _confirmBooking(
+                                  context,
+                                  selectedPlayers: selectedPlayers,
                                 ),
-                              ),
-                              Text(
-                                'Rs 1,600',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.green,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                       ),
-                    ),
-                    AppButton(
-                      label: 'Confirm Booking',
-                      trailingIcon: Icons.arrow_forward,
-                      onTap: () {},
                     ),
                     const SizedBox(height: 10),
                     AppButton(
                       label: 'Create Match for this Slot',
                       isOutline: true,
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const CreateMatchScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const CreateMatchScreen(),
+                        ),
                       ),
                     ),
                   ],
@@ -285,5 +351,571 @@ class _BookingScreenState extends State<BookingScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmBooking(
+    BuildContext context, {
+    required int selectedPlayers,
+  }) async {
+    if (_selectedSlotId == null) {
+      Get.snackbar('Error', 'Please select an available slot.');
+      return;
+    }
+    final result = await _bookingController.createBooking(
+      turfId: widget.turfId,
+      slotIds: [_selectedSlotId!],
+      playersCount: selectedPlayers,
+      sportType: widget.sportType,
+      couponCode: null,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (result.success) {
+      Get.snackbar(
+        'Success',
+        result.message.isNotEmpty
+            ? result.message
+            : 'Booking confirmed successfully.',
+      );
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+      );
+      return;
+    }
+
+    if (result.hasInsufficientWallet ||
+        result.message.toLowerCase().contains('insufficient wallet balance')) {
+      await _showInsufficientWalletDialog(context, result);
+      return;
+    }
+
+    Get.snackbar(
+      'Error',
+      result.message.isNotEmpty
+          ? result.message
+          : 'Unable to confirm booking right now.',
+    );
+  }
+
+  Future<void> _showInsufficientWalletDialog(
+    BuildContext context,
+    BookingCreateResult result,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          backgroundColor: AppColors.white,
+          title: Text(
+            'Wallet Balance Low',
+            style: GoogleFonts.dmSans(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.dark,
+            ),
+          ),
+          content: Text(
+            result.message.isNotEmpty
+                ? result.message
+                : 'Please top up your wallet to continue.',
+            style: GoogleFonts.dmSans(
+              fontSize: 12,
+              color: AppColors.muted,
+              height: 1.5,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+          actions: [
+            Column(
+              children: [
+                AppButton(
+                  label: 'Top Up Wallet',
+                  onTap: () {
+                    Navigator.of(dialogContext).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const WalletRazorpayScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                AppButton(
+                  label: 'Maybe Later',
+                  isOutline: true,
+                  onTap: () => Navigator.of(dialogContext).pop(),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _loadSlots() async {
+    await _turfController.loadAvailableSlots(
+      turfId: widget.turfId,
+      date: DateFormat('yyyy-MM-dd').format(_selectedDate),
+    );
+    if (!mounted) {
+      return;
+    }
+    final firstAvailable = _turfController.slots.cast<TurfSlotModel?>().firstWhere(
+          (slot) => slot?.isAvailable == true,
+          orElse: () => null,
+        );
+    setState(() {
+      _selectedSlotId = firstAvailable?.id;
+    });
+  }
+
+  Widget _detailHeroCard() {
+    return Obx(() {
+      final turf = _turfController.selectedTurf.value;
+      final isLoading = _turfController.isDetailLoading.value && turf == null;
+      final detailError = _turfController.detailErrorMessage.value;
+
+      if (isLoading) {
+        return const SmallCard(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        );
+      }
+
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2C3E20), AppColors.green],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        turf?.name ?? widget.turfName,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _detailLocation(turf),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                AppBadge(
+                  turf?.formatLabel ?? 'Turf',
+                  type: BadgeType.dark,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _heroStat(
+                  LucideIcons.star,
+                  turf != null
+                      ? '${turf.ratingLabel} ${turf.reviewLabel}'
+                      : 'New',
+                ),
+                _heroStat(
+                  LucideIcons.users,
+                  turf?.maxCapacity != null && turf!.maxCapacity > 0
+                      ? 'Up to ${turf.maxCapacity}'
+                      : 'Flexible capacity',
+                ),
+                _heroStat(
+                  LucideIcons.clock3,
+                  _hoursText(turf),
+                ),
+              ],
+            ),
+            if (detailError.isNotEmpty && turf == null) ...[
+              const SizedBox(height: 10),
+              Text(
+                detailError,
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.85),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _detailSections() {
+    return Obx(() {
+      final turf = _turfController.selectedTurf.value;
+      if (turf == null) {
+        return const SizedBox.shrink();
+      }
+
+      return Column(
+        children: [
+          if (turf.description.trim().isNotEmpty)
+            SmallCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'About Turf',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    turf.description,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                      height: 1.6,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (turf.pricing != null)
+            SmallCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Pricing',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  InfoRow(
+                    label: 'Weekday',
+                    value: 'Rs ${_formatAmount(turf.pricing!.weekday)}',
+                  ),
+                  InfoRow(
+                    label: 'Weekend',
+                    value: 'Rs ${_formatAmount(turf.pricing!.weekend)}',
+                  ),
+                  InfoRow(
+                    label: 'Peak',
+                    value: 'Rs ${_formatAmount(turf.pricing!.peak)}',
+                  ),
+                  InfoRow(
+                    label: 'Surge pricing',
+                    value: turf.pricing!.surgeEnabled ? 'Enabled' : 'Disabled',
+                  ),
+                ],
+              ),
+            ),
+          if (turf.amenities.isNotEmpty)
+            SmallCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Amenities',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: turf.amenities
+                        .map(
+                          (item) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.bg2,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Text(
+                              item,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.dark,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
+            ),
+          SmallCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Venue Details',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                InfoRow(label: 'Sport', value: _capitalize(turf.sportType)),
+                InfoRow(label: 'Format', value: turf.formatLabel),
+                InfoRow(
+                  label: 'Operating hours',
+                  value: _hoursText(turf),
+                ),
+                if (turf.ownerName.trim().isNotEmpty)
+                  InfoRow(label: 'Owner', value: turf.ownerName),
+                if (turf.ownerBusiness.trim().isNotEmpty)
+                  InfoRow(label: 'Business', value: turf.ownerBusiness),
+                if (turf.totalBookings > 0)
+                  InfoRow(
+                    label: 'Past bookings',
+                    value: '${turf.totalBookings}',
+                  ),
+              ],
+            ),
+          ),
+          if (_turfController.reviews.isNotEmpty)
+            SmallCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Recent Reviews',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ..._turfController.reviews.take(3).map(
+                        (review) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      review.playerName,
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.dark,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    review.rating.toStringAsFixed(1),
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.green,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                review.text,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: AppColors.muted,
+                                  height: 1.5,
+                                ),
+                              ),
+                              if (review.tags.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: review.tags
+                                      .map(
+                                        (tag) => AppBadge(
+                                          tag,
+                                          type: BadgeType.green,
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                ],
+              ),
+            ),
+        ],
+      );
+    });
+  }
+
+  Widget _heroStat(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: GoogleFonts.dmSans(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryCard(int selectedPlayers) {
+    final slot = _selectedSlot;
+    final amount = (slot?.price ?? widget.pricePerHour).toDouble();
+    final slotText = slot?.label ?? 'Select a slot';
+
+    return SmallCard(
+      child: Column(
+        children: [
+          InfoRow(label: 'Turf', value: widget.turfName),
+          InfoRow(
+            label: 'Sport',
+            value: _capitalize(widget.sportType),
+          ),
+          InfoRow(
+            label: 'Date & Time',
+            value: '${DateFormat('dd MMM yyyy').format(_selectedDate)}, $slotText',
+          ),
+          InfoRow(
+            label: 'Players',
+            value: '$selectedPlayers selected',
+          ),
+          const AppDivider(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.dark,
+                ),
+              ),
+              Text(
+                'Rs ${_formatAmount(amount)}',
+                style: GoogleFonts.dmSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.green,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  TurfSlotModel? get _selectedSlot {
+    for (final slot in _turfController.slots) {
+      if (slot.id == _selectedSlotId) {
+        return slot;
+      }
+    }
+    return null;
+  }
+
+  bool _isSameDate(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _detailLocation(TurfModel? turf) {
+    if (turf == null) {
+      return 'Loading turf details...';
+    }
+    final parts = <String>[
+      if (turf.address.trim().isNotEmpty) turf.address,
+      if (turf.city.trim().isNotEmpty) turf.city,
+    ];
+    if (parts.isEmpty) {
+      return 'Location unavailable';
+    }
+    return parts.join(', ');
+  }
+
+  String _hoursText(TurfModel? turf) {
+    final hours = turf?.operatingHours;
+    if (hours == null) {
+      return 'Hours unavailable';
+    }
+    return '${hours.opens} - ${hours.closes}';
+  }
+
+  String _capitalize(String value) {
+    if (value.trim().isEmpty) {
+      return '-';
+    }
+    final normalized = value.trim().toLowerCase();
+    return normalized[0].toUpperCase() + normalized.substring(1);
+  }
+
+  String _formatAmount(num value) {
+    final isWhole = value == value.roundToDouble();
+    return value.toStringAsFixed(isWhole ? 0 : 2);
   }
 }

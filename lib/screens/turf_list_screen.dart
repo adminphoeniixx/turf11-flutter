@@ -1,10 +1,12 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide SearchBar;
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../controllers/turf_controller.dart';
+import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
-import '../widgets/shared_widgets.dart' as custom;
 import 'booking_screen.dart';
 
 class TurfListScreen extends StatefulWidget {
@@ -20,40 +22,32 @@ class TurfListScreen extends StatefulWidget {
 }
 
 class _TurfListScreenState extends State<TurfListScreen> {
+  late final TurfController controller;
+  final TextEditingController _searchController = TextEditingController();
   int _sportIndex = 0;
 
-  static const _turfs = [
-    (
-      name: 'DLF Arena Cricket Box',
-      location: 'Sector 29 | 1.2 km',
-      price: 'Rs 800/hr',
-      rating: '4.2 (128)',
-      badge: 'Open Now',
-      badgeColor: Colors.white,
-      available: true,
-    ),
-    (
-      name: 'Sector 56 Cricket Box',
-      location: 'Sector 56 | 2.4 km',
-      price: 'Rs 600/hr',
-      rating: '4.7 (89)',
-      badge: 'Peak Hours',
-      badgeColor: Color(0xFFFEF3CD),
-      available: true,
-    ),
-    (
-      name: 'CyberHub Cricket Arena',
-      location: 'CyberHub | 3.1 km',
-      price: 'Rs 900/hr',
-      rating: '4.5 (203)',
-      badge: 'Full Today',
-      badgeColor: Color(0xFFFDECEA),
-      available: false,
-    ),
-  ];
+  static const _sports = ['All', 'Cricket', 'Football', 'Badminton'];
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.isRegistered<TurfController>()
+        ? Get.find<TurfController>()
+        : Get.put(TurfController());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => controller.loadNearbyTurfs());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final query = _searchController.text.trim().toLowerCase();
+
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -82,13 +76,23 @@ class _TurfListScreenState extends State<TurfListScreen> {
                                 color: AppColors.dark,
                               ),
                             ),
-                            Text(
-                              'Gurugram | 12 found',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 12,
-                                color: AppColors.muted,
-                              ),
-                            ),
+                            Obx(() {
+                              final count = _visibleTurfs(
+                                controller.turfs,
+                                query,
+                              ).length;
+                              final subtitle =
+                                  controller.isUsingFallbackLocation.value
+                                      ? '$count found using fallback location'
+                                      : '$count found near you';
+                              return Text(
+                                subtitle,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  color: AppColors.muted,
+                                ),
+                              );
+                            }),
                           ],
                         ),
                         Container(
@@ -126,34 +130,73 @@ class _TurfListScreenState extends State<TurfListScreen> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    const custom.SearchBar(hint: 'Search turf name, area...'),
+                    SearchBar(
+                      hint: 'Search turf name, area...',
+                      controller: _searchController,
+                      onChanged: (_) => setState(() {}),
+                    ),
                     ChipRow(
-                      const ['All', 'Cricket', 'Football', 'Badminton'],
+                      _sports,
                       initial: _sportIndex,
                       onChanged: (index) => setState(() => _sportIndex = index),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 14),
                     Expanded(
-                      child: ListView.builder(
-                        itemCount: _turfs.length,
-                        itemBuilder: (context, index) {
-                          final turf = _turfs[index];
-                          return _TurfListCard(
-                            name: turf.name,
-                            location: turf.location,
-                            price: turf.price,
-                            rating: turf.rating,
-                            badge: turf.badge,
-                            badgeBg: turf.badgeColor,
-                            available: turf.available,
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const BookingScreen(),
-                              ),
-                            ),
+                      child: Obx(() {
+                        final isLoading = controller.isLoading.value;
+                        final visibleTurfs =
+                            _visibleTurfs(controller.turfs, query);
+
+                        if (isLoading && controller.turfs.isEmpty) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
                           );
-                        },
-                      ),
+                        }
+
+                        if (controller.errorMessage.value.isNotEmpty &&
+                            controller.turfs.isEmpty) {
+                          return _MessageState(
+                            icon: LucideIcons.alertCircle,
+                            title: 'Unable to load turfs',
+                            subtitle: controller.errorMessage.value,
+                          );
+                        }
+
+                        if (visibleTurfs.isEmpty) {
+                          return const _MessageState(
+                            icon: LucideIcons.mapPin,
+                            title: 'No turfs found',
+                            subtitle:
+                                'Try changing your search or check again in a bit.',
+                          );
+                        }
+
+                        return RefreshIndicator(
+                          color: AppColors.green,
+                          onRefresh: controller.loadNearbyTurfs,
+                          child: ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            itemCount: visibleTurfs.length,
+                            itemBuilder: (context, index) {
+                              final turf = visibleTurfs[index];
+                              return _TurfListCard(
+                                turf: turf,
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => BookingScreen(
+                                      turfId: turf.id,
+                                      turfName: turf.name,
+                                      sportType: turf.sportType,
+                                      pricePerHour:
+                                          turf.pricePerHour.toInt(),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      }),
                     ),
                   ],
                 ),
@@ -164,26 +207,26 @@ class _TurfListScreenState extends State<TurfListScreen> {
       ),
     );
   }
+
+  List<TurfModel> _visibleTurfs(List<TurfModel> turfs, String query) {
+    final activeSport = _sports[_sportIndex].toLowerCase();
+    return turfs.where((turf) {
+      final matchesSport =
+          activeSport == 'all' || turf.sportType.toLowerCase() == activeSport;
+      final matchesQuery = query.isEmpty ||
+          turf.name.toLowerCase().contains(query) ||
+          turf.location.toLowerCase().contains(query);
+      return matchesSport && matchesQuery;
+    }).toList();
+  }
 }
 
 class _TurfListCard extends StatelessWidget {
-  final String name;
-  final String location;
-  final String price;
-  final String rating;
-  final String badge;
-  final Color badgeBg;
-  final bool available;
+  final TurfModel turf;
   final VoidCallback? onTap;
 
   const _TurfListCard({
-    required this.name,
-    required this.location,
-    required this.price,
-    required this.rating,
-    required this.badge,
-    required this.badgeBg,
-    required this.available,
+    required this.turf,
     this.onTap,
   });
 
@@ -207,7 +250,8 @@ class _TurfListCard extends StatelessWidget {
         child: Column(
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(22)),
               child: Container(
                 height: 100,
                 color: const Color(0xFF2D5A1B),
@@ -222,15 +266,19 @@ class _TurfListCard extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: badgeBg,
+                          color: turf.isAvailable
+                              ? Colors.white
+                              : const Color(0xFFFDECEA),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          badge,
+                          turf.isAvailable ? turf.formatLabel : 'Unavailable',
                           style: GoogleFonts.dmSans(
                             fontSize: 9.5,
                             fontWeight: FontWeight.w700,
-                            color: available ? AppColors.green : AppColors.red,
+                            color: turf.isAvailable
+                                ? AppColors.green
+                                : AppColors.red,
                           ),
                         ),
                       ),
@@ -246,54 +294,89 @@ class _TurfListCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        name,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.dark,
+                      Expanded(
+                        child: Text(
+                          turf.name,
+                          style: GoogleFonts.dmSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.dark,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
-                        price,
+                        turf.priceLabel,
                         style: GoogleFonts.dmSans(
-                          fontSize: 15,
+                          fontSize: turf.hasPrice ? 15 : 11,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.green,
+                          color:
+                              turf.hasPrice ? AppColors.green : AppColors.muted,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(LucideIcons.mapPin, size: 10, color: AppColors.muted),
-                          const SizedBox(width: 4),
-                          Text(
-                            location,
-                            style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.muted),
-                          ),
-                        ],
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(top: 1),
+                              child: Icon(LucideIcons.mapPin,
+                                  size: 10, color: AppColors.muted),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                _locationText(turf),
+                                style: GoogleFonts.dmSans(
+                                    fontSize: 10, color: AppColors.muted),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
-                        'Star $rating',
-                        style: GoogleFonts.dmSans(fontSize: 10, color: AppColors.green),
+                        '${turf.ratingLabel} ${turf.reviewLabel}',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 10, color: AppColors.green),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Row(
+                    children: [
+                      _metaPill(_capitalize(turf.sportType)),
+                      const SizedBox(width: 6),
+                      _metaPill(turf.formatLabel),
+                      if (turf.city.trim().isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: _metaPill(turf.city),
+                          ),
+                        ),
+                      ] else
+                        const Spacer(),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      _pill('Map', AppColors.white, AppColors.dark),
+                      _pill('Details', AppColors.white, AppColors.dark),
                       const SizedBox(width: 6),
                       _pill(
-                        available ? 'Book' : 'Notify Me',
-                        available ? AppColors.dark : AppColors.white,
-                        available ? Colors.white : AppColors.dark,
+                        turf.isAvailable ? 'Book Now' : 'Notify Me',
+                        turf.isAvailable ? AppColors.dark : AppColors.white,
+                        turf.isAvailable ? Colors.white : AppColors.dark,
                       ),
                     ],
                   ),
@@ -301,6 +384,41 @@ class _TurfListCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  String _locationText(TurfModel turf) {
+    final distance = turf.distanceKm != null && turf.distanceKm! > 0
+        ? '${turf.distanceKm!.toStringAsFixed(1)} km | '
+        : '';
+    final address = turf.address.trim().isNotEmpty ? turf.address : turf.location;
+    return '$distance$address';
+  }
+
+  String _capitalize(String value) {
+    if (value.trim().isEmpty) {
+      return '';
+    }
+    final normalized = value.trim().toLowerCase();
+    return normalized[0].toUpperCase() + normalized.substring(1);
+  }
+
+  Widget _metaPill(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.bg2,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.dmSans(
+          fontSize: 9.5,
+          fontWeight: FontWeight.w600,
+          color: AppColors.dark,
         ),
       ),
     );
@@ -322,6 +440,53 @@ class _TurfListCard extends StatelessWidget {
           fontSize: 10,
           fontWeight: FontWeight.w600,
           color: fg,
+        ),
+      ),
+    );
+  }
+}
+
+class _MessageState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _MessageState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: AppColors.green, size: 28),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                color: AppColors.muted,
+                height: 1.5,
+              ),
+            ),
+          ],
         ),
       ),
     );

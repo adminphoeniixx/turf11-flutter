@@ -9,6 +9,7 @@ import '../data/models/profile_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'login_screen.dart';
+import 'my_bookings_screen.dart';
 import 'wallet_razorpay_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -182,6 +183,11 @@ class ProfileScreen extends StatelessWidget {
                               _stat(
                                 '${profile?.totalBookings ?? 0}',
                                 'Bookings',
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const MyBookingsScreen(),
+                                  ),
+                                ),
                               ),
                               _stat(
                                 'Rs ${_formatMoney(profile?.totalSpent ?? 0)}',
@@ -203,6 +209,16 @@ class ProfileScreen extends StatelessWidget {
                                 'Verification',
                                 trailing: const AppBadge('Verified'),
                                 onTap: () {},
+                              ),
+                              const AppDivider(),
+                              _menuItem(
+                                LucideIcons.calendarDays,
+                                'My Bookings',
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const MyBookingsScreen(),
+                                  ),
+                                ),
                               ),
                               const AppDivider(),
                               _menuItem(
@@ -379,35 +395,38 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _stat(String value, String label) {
+  Widget _stat(String value, String label, {VoidCallback? onTap}) {
     return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: GoogleFonts.dmSans(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppColors.dark,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              Text(
+                value,
+                style: GoogleFonts.dmSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.dark,
+                ),
               ),
-            ),
-            Text(
-              label,
-              style: GoogleFonts.dmSans(
-                fontSize: 9,
-                color: AppColors.muted,
-                letterSpacing: 0.5,
+              Text(
+                label,
+                style: GoogleFonts.dmSans(
+                  fontSize: 9,
+                  color: AppColors.muted,
+                  letterSpacing: 0.5,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

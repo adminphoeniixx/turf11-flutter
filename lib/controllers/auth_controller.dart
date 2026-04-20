@@ -5,41 +5,50 @@ import '../data/services/auth_service.dart';
 
 class AuthController extends GetxController {
   var isLoading = false.obs;
+  final lastOtpRequestId = ''.obs;
 
   // 🔹 SEND OTP
   Future<bool> sendOtp(String phone, bool isLogin) async {
     try {
       isLoading.value = true;
 
-      final phoneStatus = await AuthService.checkPhone(phone);
-      if (phoneStatus.exists != null) {
-        if (isLogin && phoneStatus.exists == false) {
-          Get.snackbar(
-            "Error",
-            phoneStatus.message.isNotEmpty
-                ? phoneStatus.message
-                : "This phone number is not registered.",
-          );
-          return false;
-        }
+      try {
+        final phoneStatus = await AuthService.checkPhone(phone);
+        if (phoneStatus.exists != null) {
+          if (isLogin && phoneStatus.exists == false) {
+            Get.snackbar(
+              "Error",
+              phoneStatus.message.isNotEmpty
+                  ? phoneStatus.message
+                  : "This phone number is not registered.",
+            );
+            return false;
+          }
 
-        if (!isLogin && phoneStatus.exists == true) {
-          Get.snackbar(
-            "Error",
-            phoneStatus.message.isNotEmpty
-                ? phoneStatus.message
-                : "This phone number is already registered.",
-          );
-          return false;
+          if (!isLogin && phoneStatus.exists == true) {
+            Get.snackbar(
+              "Error",
+              phoneStatus.message.isNotEmpty
+                  ? phoneStatus.message
+                  : "This phone number is already registered.",
+            );
+            return false;
+          }
         }
+      } catch (_) {
+        // Proceed with send OTP even if pre-check is unavailable.
       }
 
-      await AuthService.sendOtp(
+      final res = await AuthService.sendOtp(
         phone,
         isLogin ? "login" : "register",
       );
+      lastOtpRequestId.value = res.requestId;
 
-      Get.snackbar("Success", "OTP sent successfully");
+      Get.snackbar(
+        "Success",
+        res.message.isNotEmpty ? res.message : "OTP sent successfully",
+      );
       return true;
     } catch (e) {
       Get.snackbar("Error", _readableError(e));
@@ -86,13 +95,20 @@ class AuthController extends GetxController {
   }
 
   // 🔹 RESEND OTP ✅ FIXED (NOW INSIDE CLASS)
-  Future<bool> resendOtp(String phone) async {
+  Future<bool> resendOtp(String phone, bool isLogin) async {
     try {
       isLoading.value = true;
 
-      await AuthService.resendOtp(phone);
+      final res = await AuthService.resendOtp(
+        phone,
+        isLogin ? "login" : "register",
+      );
+      lastOtpRequestId.value = res.requestId;
 
-      Get.snackbar("Success", "OTP resent successfully");
+      Get.snackbar(
+        "Success",
+        res.message.isNotEmpty ? res.message : "OTP resent successfully",
+      );
       return true;
     } catch (e) {
       Get.snackbar("Error", _readableError(e));

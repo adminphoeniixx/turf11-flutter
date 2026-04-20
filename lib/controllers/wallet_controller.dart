@@ -9,7 +9,9 @@ import '../data/services/wallet_service.dart';
 class WalletController extends GetxController {
   final isLoading = false.obs;
   final isTopupLoading = false.obs;
+  final isTransactionsLoading = false.obs;
   final wallet = Rxn<WalletResponse>();
+  final transactions = <WalletTransaction>[].obs;
 
   Future<void> loadWallet() async {
     try {
@@ -19,6 +21,28 @@ class WalletController extends GetxController {
       debugPrint('[WalletController] loadWallet failed: ${_readableError(e)}');
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> loadTransactions({
+    String type = '',
+    int perPage = 10,
+  }) async {
+    try {
+      isTransactionsLoading.value = true;
+      transactions.assignAll(
+        await WalletService.fetchTransactions(
+          type: type,
+          perPage: perPage,
+        ),
+      );
+    } catch (e) {
+      debugPrint(
+        '[WalletController] loadTransactions failed: ${_readableError(e)}',
+      );
+      transactions.clear();
+    } finally {
+      isTransactionsLoading.value = false;
     }
   }
 
@@ -51,6 +75,7 @@ class WalletController extends GetxController {
         signature: signature,
       );
       await loadWallet();
+      await loadTransactions();
       return message;
     } catch (e) {
       debugPrint(

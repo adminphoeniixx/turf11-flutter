@@ -40,6 +40,7 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
     super.initState();
     _walletController = Get.put(WalletController());
     _walletController.loadWallet();
+    _walletController.loadTransactions();
 
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
@@ -69,6 +70,9 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
                 final isWalletLoading =
                     _walletController.isLoading.value && wallet == null;
                 final isTopupLoading = _walletController.isTopupLoading.value;
+                final transactions = _walletController.transactions;
+                final isTransactionsLoading =
+                    _walletController.isTransactionsLoading.value;
 
                 return SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
@@ -222,8 +226,8 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
                       ),
                       const SizedBox(height: 14),
                       const SectionLabel('Pay Via'),
-                      ChipRow(['UPI', 'Card', 'Net Banking']),
-                      const SizedBox(height: 4),
+                      const ChipRow(['UPI', 'Card', 'Net Banking']),
+                      const SizedBox(height: 15),
                       AppButton(
                         label: isTopupLoading
                             ? 'Processing...'
@@ -249,7 +253,14 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
                             child: CircularProgressIndicator(),
                           ),
                         )
-                      else if (wallet == null || wallet.transactions.isEmpty)
+                      else if (isTransactionsLoading && transactions.isEmpty)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else if (transactions.isEmpty)
                         SmallCard(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -268,11 +279,9 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
                         SmallCard(
                           child: Column(
                             children: [
-                              for (var i = 0;
-                                  i < wallet.transactions.length;
-                                  i++) ...[
-                                _txnItem(wallet.transactions[i]),
-                                if (i != wallet.transactions.length - 1)
+                              for (var i = 0; i < transactions.length; i++) ...[
+                                _txnItem(transactions[i]),
+                                if (i != transactions.length - 1)
                                   const AppDivider(),
                               ],
                             ],
@@ -419,9 +428,7 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
           Row(
             children: [
               _tag(
-                wallet == null
-                    ? 'Transactions 0'
-                    : 'Transactions ${wallet.transactions.length}',
+                'Transactions ${_walletController.transactions.length}',
               ),
               const SizedBox(width: 8),
               _tag(
@@ -457,6 +464,9 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
     final amountText = isCredit
         ? '+Rs ${_formatAmount(txn.amount)}'
         : '-Rs ${_formatAmount(txn.amount)}';
+    final title = txn.description.trim().isNotEmpty
+        ? txn.description.trim()
+        : _formatTitle(txn.type);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -481,9 +491,7 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  txn.description.isNotEmpty
-                      ? txn.description
-                      : _formatTitle(txn.type),
+                  title,
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -514,6 +522,14 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
   }
 
   bool _isCredit(WalletTransaction txn) {
+    final direction = txn.direction.trim().toLowerCase();
+    if (direction == 'credit') {
+      return true;
+    }
+    if (direction == 'debit') {
+      return false;
+    }
+
     final normalized = txn.type.trim().toLowerCase();
     return normalized.contains('credit') ||
         normalized.contains('add') ||
@@ -544,8 +560,9 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
 
   String _formatSubtitle(WalletTransaction txn) {
     final parts = <String>[
+      if (txn.performedByName.trim().isNotEmpty) txn.performedByName.trim(),
       if (txn.createdAt.trim().isNotEmpty) _formatDateTime(txn.createdAt),
-      if (txn.status.trim().isNotEmpty) txn.status.trim(),
+      if (txn.txnCode.trim().isNotEmpty) txn.txnCode.trim(),
     ];
 
     if (parts.isEmpty) {

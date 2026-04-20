@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-
 import '../controllers/auth_controller.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
@@ -27,8 +26,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final cityController = TextEditingController();
   final stateController = TextEditingController();
   final dobController = TextEditingController();
-
-  int _roleIndex = 0;
   final List<String> _sports = [
     'Cricket',
     'Football',
@@ -78,12 +75,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 20),
 
-                    _label('I am a'),
-
-                    ChipRow(['Player', 'Turf Owner'],
-                        initial: _roleIndex,
-                        onChanged: (i) => setState(() => _roleIndex = i)),
-
                     // ✅ Fields with controller
                     _field(
                       'Phone Number',
@@ -101,11 +92,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         type: TextInputType.emailAddress),
                     _field('City', 'Enter your city', cityController),
                     _field('State', 'Enter your state', stateController),
-
-                    _label('Date of Birth'),
-                    _dateField(context),
-
-                    const SizedBox(height: 14),
 
                     _label('Preferred Sports'),
 
@@ -146,54 +132,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 20),
 
                     // ✅ API CALL BUTTON
-                    AppButton(
-                      label: 'Send OTP & Continue',
-                      trailingIcon: Icons.arrow_forward,
-                      onTap: () async {
-                        final phone = phoneController.text.trim();
-                        final name = nameController.text.trim();
-                        final email = emailController.text.trim();
-                        final city = cityController.text.trim();
-                        final state = stateController.text.trim();
+                    Obx(
+                      () => AppButton(
+                        label: controller.isLoading.value
+                            ? 'Sending OTP...'
+                            : 'Send OTP & Continue',
+                        trailingIcon: controller.isLoading.value
+                            ? null
+                            : Icons.arrow_forward,
+                        onTap: controller.isLoading.value
+                            ? null
+                            : () async {
+                                FocusScope.of(context).unfocus();
+                                final phone = phoneController.text.trim();
+                                final name = nameController.text.trim();
+                                final email = emailController.text.trim();
+                                final city = cityController.text.trim();
+                                final state = stateController.text.trim();
 
-                        if (phone.length != 10) {
-                          Get.snackbar("Error", "Enter a valid phone number");
-                          return;
-                        }
+                                if (phone.length != 10) {
+                                  Get.snackbar("Error", "Enter a valid phone number");
+                                  return;
+                                }
 
-                        if (name.isEmpty || city.isEmpty || state.isEmpty) {
-                          Get.snackbar("Error", "Name, city and state are required");
-                          return;
-                        }
+                                if (name.isEmpty || city.isEmpty || state.isEmpty) {
+                                  Get.snackbar("Error", "Name, city and state are required");
+                                  return;
+                                }
 
-                        final sent = await controller.sendOtp(phone, false);
-                        if (!sent) {
-                          return;
-                        }
+                                if (_selectedSports.isEmpty) {
+                                  Get.snackbar("Error", "Select at least one sport");
+                                  return;
+                                }
 
-                        if (!context.mounted) {
-                          return;
-                        }
+                                final sent = await controller.sendOtp(phone, false);
+                                if (!sent) {
+                                  return;
+                                }
 
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => OtpScreen(
-                              phone: phone,
-                              isLogin: false,
-                              registrationData: {
-                                "name": name,
-                                if (email.isNotEmpty) "email": email,
-                                "city": city,
-                                "state": state,
-                                "sports": _selectedSports
-                                    .map((i) => _sports[i].toLowerCase())
-                                    .toList(),
+                                if (!context.mounted) {
+                                  return;
+                                }
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => OtpScreen(
+                                      phone: phone,
+                                      isLogin: false,
+                                      registrationData: {
+                                        "name": name,
+                                        if (email.isNotEmpty) "email": email,
+                                        "city": city,
+                                        "state": state,
+                                        "sports": _selectedSports
+                                            .map((i) => _sports[i].toLowerCase())
+                                            .toList(),
+                                      },
+                                    ),
+                                  ),
+                                );
                               },
-                            ),
-                          ),
-                        );
-                      },
+                      ),
                     ),
 
                     const SizedBox(height: 12),

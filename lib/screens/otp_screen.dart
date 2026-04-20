@@ -246,7 +246,10 @@ class _OtpScreenState extends State<OtpScreen> {
                               ? null
                               : () async {
                                   final resent =
-                                      await controller.resendOtp(widget.phone);
+                                      await controller.resendOtp(
+                                        widget.phone,
+                                        widget.isLogin,
+                                      );
                                   if (resent && mounted) {
                                     setState(() => _seconds = 120);
                                     _startTimer();

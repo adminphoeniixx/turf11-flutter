@@ -363,6 +363,65 @@ class SmallCard extends StatelessWidget {
   }
 }
 
+class ShimmerBox extends StatelessWidget {
+  final double width;
+  final double height;
+  final BorderRadius? borderRadius;
+  final BoxShape shape;
+  final EdgeInsetsGeometry? margin;
+
+  const ShimmerBox({
+    super.key,
+    required this.width,
+    required this.height,
+    this.borderRadius,
+    this.shape = BoxShape.rectangle,
+    this.margin,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      margin: margin,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: -1.0, end: 2.0),
+        duration: const Duration(milliseconds: 1400),
+        curve: Curves.easeInOut,
+        onEnd: () {},
+        builder: (context, value, _) {
+          return ShaderMask(
+            blendMode: BlendMode.srcATop,
+            shaderCallback: (bounds) {
+              return LinearGradient(
+                begin: Alignment(value - 1, 0),
+                end: Alignment(value, 0),
+                colors: const [
+                  Color(0xFFE9EDF0),
+                  Color(0xFFF7F8FA),
+                  Color(0xFFE9EDF0),
+                ],
+                stops: const [0.15, 0.5, 0.85],
+              ).createShader(bounds);
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFE9EDF0),
+                shape: shape,
+                borderRadius:
+                    shape == BoxShape.circle
+                        ? null
+                        : (borderRadius ?? BorderRadius.circular(12)),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
 // ─── DIVIDER ──────────────────────────────────────────────────────────────────
 class AppDivider extends StatelessWidget {
   const AppDivider({super.key});
@@ -378,7 +437,17 @@ class SearchBar extends StatelessWidget {
   final String hint;
   final VoidCallback? onTap;
   final bool readOnly;
-  const SearchBar({super.key, this.hint = 'Search...', this.onTap, this.readOnly = false});
+  final TextEditingController? controller;
+  final ValueChanged<String>? onChanged;
+
+  const SearchBar({
+    super.key,
+    this.hint = 'Search...',
+    this.onTap,
+    this.readOnly = false,
+    this.controller,
+    this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -408,6 +477,8 @@ class SearchBar extends StatelessWidget {
                       style: GoogleFonts.dmSans(
                           fontSize: 13, color: AppColors.muted2))
                   : TextField(
+                      controller: controller,
+                      onChanged: onChanged,
                       decoration: InputDecoration(
                         hintText: hint,
                         border: InputBorder.none,

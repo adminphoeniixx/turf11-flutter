@@ -3,14 +3,15 @@ import '../../core/api_client.dart';
 import '../../core/api_constants.dart';
 
 class AuthService {
-  static Future<void> sendOtp(String phone, String type) async {
-    await ApiClient.post(
+  static Future<SendOtpResponse> sendOtp(String phone, String type) async {
+    final res = await ApiClient.post(
       ApiConstants.sendOtp,
       data: {
         "phone": phone,
-        "type": type, // login / register
+        "type": type,
       },
     );
+    return SendOtpResponse.fromJson(_toMap(res.data));
   }
 
   static Future<CheckPhoneResponse> checkPhone(String phone) async {
@@ -22,11 +23,19 @@ class AuthService {
     return CheckPhoneResponse.fromJson(_toMap(res.data));
   }
 
-  static Future<void> resendOtp(String phone) async {
-    await ApiClient.post(
-      ApiConstants.resendOtp,
-      data: {"phone": phone},
-    );
+  static Future<SendOtpResponse> resendOtp(String phone, String type) async {
+    try {
+      final res = await ApiClient.post(
+        ApiConstants.resendOtp,
+        data: {
+          "phone": phone,
+          "type": type,
+        },
+      );
+      return SendOtpResponse.fromJson(_toMap(res.data));
+    } catch (_) {
+      return sendOtp(phone, type);
+    }
   }
 
   static Future<AuthResponse> login(String phone, String otp) async {

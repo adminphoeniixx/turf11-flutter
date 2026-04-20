@@ -23,6 +23,30 @@ class AuthResponse {
   }
 }
 
+class SendOtpResponse {
+  final bool success;
+  final String message;
+  final String requestId;
+
+  const SendOtpResponse({
+    required this.success,
+    required this.message,
+    required this.requestId,
+  });
+
+  factory SendOtpResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'];
+    final nestedData = data is Map<String, dynamic> ? data : <String, dynamic>{};
+
+    return SendOtpResponse(
+      success: (json['success'] ?? nestedData['success'] ?? false) == true,
+      message: (json['message'] ?? nestedData['message'] ?? '').toString(),
+      requestId:
+          (json['request_id'] ?? nestedData['request_id'] ?? '').toString(),
+    );
+  }
+}
+
 class CheckPhoneResponse {
   final bool? exists;
   final String message;
