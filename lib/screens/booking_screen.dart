@@ -36,7 +36,7 @@ class _BookingScreenState extends State<BookingScreen> {
   late final BookingController _bookingController;
   late final TurfController _turfController;
   late DateTime _selectedDate;
-  int? _selectedSlotId;
+  final List<int> _selectedSlotIds = <int>[];
   int _selectedPeople = 7;
   static const _people = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
 
@@ -92,7 +92,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             onTap: () {
                               setState(() {
                                 _selectedDate = date;
-                                _selectedSlotId = null;
+                                _selectedSlotIds.clear();
                               });
                               _loadSlots();
                             },
@@ -154,11 +154,19 @@ class _BookingScreenState extends State<BookingScreen> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      'Time Slot',
+                      'Time Slots',
                       style: GoogleFonts.dmSans(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppColors.dark,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Tap one or more available slots to book them together.',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: AppColors.muted,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -198,18 +206,25 @@ class _BookingScreenState extends State<BookingScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: _turfController.slots.map((slot) {
-                          final isSelected = slot.id == _selectedSlotId;
+                          final canSelect = _canSelectSlot(slot);
+                          final isSelected = _selectedSlotIds.contains(slot.id);
                           return GestureDetector(
-                            onTap: !slot.isAvailable
+                            onTap: !canSelect
                                 ? null
-                                : () => setState(() => _selectedSlotId = slot.id),
+                                : () => setState(() {
+                                    if (isSelected) {
+                                      _selectedSlotIds.remove(slot.id);
+                                    } else {
+                                      _selectedSlotIds.add(slot.id);
+                                    }
+                                  }),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14,
                                 vertical: 10,
                               ),
                               decoration: BoxDecoration(
-                                color: !slot.isAvailable
+                                color: !canSelect
                                     ? AppColors.bg
                                     : isSelected
                                         ? AppColors.dark
@@ -230,7 +245,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                     style: GoogleFonts.dmSans(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
-                                      color: !slot.isAvailable
+                                      color: !canSelect
                                           ? AppColors.muted2
                                           : isSelected
                                               ? Colors.white
@@ -239,12 +254,16 @@ class _BookingScreenState extends State<BookingScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    slot.price > 0
+                                    !slot.isAvailable
+                                        ? 'Unavailable'
+                                        : _isSlotExpired(slot)
+                                            ? 'Time passed'
+                                            : slot.price > 0
                                         ? 'Rs ${_formatAmount(slot.price)}'
                                         : 'Available',
                                     style: GoogleFonts.dmSans(
                                       fontSize: 10,
-                                      color: !slot.isAvailable
+                                      color: !canSelect
                                           ? AppColors.muted2
                                           : isSelected
                                               ? Colors.white70
@@ -357,13 +376,18 @@ class _BookingScreenState extends State<BookingScreen> {
     BuildContext context, {
     required int selectedPlayers,
   }) async {
-    if (_selectedSlotId == null) {
-      Get.snackbar('Error', 'Please select an available slot.');
+    _selectedSlotIds.removeWhere(
+      (slotId) => !_turfController.slots.any(
+        (slot) => slot.id == slotId && _canSelectSlot(slot),
+      ),
+    );
+    if (_selectedSlotIds.isEmpty) {
+      Get.snackbar('Error', 'Please select at least one available slot.');
       return;
     }
     final result = await _bookingController.createBooking(
       turfId: widget.turfId,
-      slotIds: [_selectedSlotId!],
+      slotIds: List<int>.from(_selectedSlotIds),
       playersCount: selectedPlayers,
       sportType: widget.sportType,
       couponCode: null,
@@ -467,12 +491,8 @@ class _BookingScreenState extends State<BookingScreen> {
     if (!mounted) {
       return;
     }
-    final firstAvailable = _turfController.slots.cast<TurfSlotModel?>().firstWhere(
-          (slot) => slot?.isAvailable == true,
-          orElse: () => null,
-        );
     setState(() {
-      _selectedSlotId = firstAvailable?.id;
+      _selectedSlotIds.clear();
     });
   }
 
@@ -824,9 +844,16 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Widget _summaryCard(int selectedPlayers) {
-    final slot = _selectedSlot;
-    final amount = (slot?.price ?? widget.pricePerHour).toDouble();
-    final slotText = slot?.label ?? 'Select a slot';
+    final slots = _selectedSlots;
+    final amount = slots.isEmpty
+        ? 0.0
+        : slots.fold<double>(
+            0,
+            (total, slot) => total + slot.price.toDouble(),
+          );
+    final slotText = slots.isEmpty
+        ? 'Select slot(s)'
+        : slots.map((slot) => slot.label).join(', ');
 
     return SmallCard(
       child: Column(
@@ -871,13 +898,71 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  TurfSlotModel? get _selectedSlot {
-    for (final slot in _turfController.slots) {
-      if (slot.id == _selectedSlotId) {
-        return slot;
+  List<TurfSlotModel> get _selectedSlots {
+    return _turfController.slots
+        .where((slot) => _selectedSlotIds.contains(slot.id))
+        .toList();
+  }
+
+  bool _canSelectSlot(TurfSlotModel slot) {
+    return slot.isAvailable && !_isSlotExpired(slot);
+  }
+
+  bool _isSlotExpired(TurfSlotModel slot) {
+    if (!_isSameDate(_selectedDate, DateTime.now())) {
+      return false;
+    }
+
+    final slotStart = _slotStartDateTime(slot);
+    if (slotStart == null) {
+      return false;
+    }
+
+    return !slotStart.isAfter(DateTime.now());
+  }
+
+  DateTime? _slotStartDateTime(TurfSlotModel slot) {
+    final startText = _extractStartTime(slot.label);
+    if (startText == null) {
+      return null;
+    }
+
+    for (final pattern in const [
+      'HH:mm:ss',
+      'HH:mm',
+      'H:mm',
+      'hh:mm a',
+      'h:mm a',
+      'h a',
+    ]) {
+      try {
+        final parsedTime = DateFormat(pattern).parseStrict(startText);
+        return DateTime(
+          _selectedDate.year,
+          _selectedDate.month,
+          _selectedDate.day,
+          parsedTime.hour,
+          parsedTime.minute,
+          parsedTime.second,
+        );
+      } catch (_) {
+        continue;
       }
     }
+
     return null;
+  }
+
+  String? _extractStartTime(String label) {
+    final parts = label.split(' - ');
+    if (parts.isNotEmpty && parts.first.trim().isNotEmpty) {
+      return parts.first.trim();
+    }
+
+    final match = RegExp(
+      r'(\d{1,2}:\d{2}(?::\d{2})?\s?[APMapm]{0,2}|\d{1,2}\s?[APMapm]{2})',
+    ).firstMatch(label);
+    return match?.group(0)?.trim();
   }
 
   bool _isSameDate(DateTime a, DateTime b) {

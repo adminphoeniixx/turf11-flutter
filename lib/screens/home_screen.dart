@@ -78,7 +78,12 @@ class _HomeContent extends StatelessWidget {
     if (parsed == null) {
       return value.trim().isEmpty ? 'Date TBD' : value;
     }
-    return '${parsed.day}/${parsed.month}';
+    return 'Today';
+  }
+
+  String _playerInitialsForIndex(int index) {
+    const initials = ['RS', 'AK', 'MV', 'SK', 'PJ', 'RT', 'NK', 'AD'];
+    return initials[index % initials.length];
   }
 
   @override
@@ -450,9 +455,13 @@ class _HomeContent extends StatelessWidget {
                   final slotsLeft = match.slotsLeft;
                   final progress = match.fillProgress;
                   final isJoined = matchController.isMatchJoined(match.id);
+                  final visibleSlots = match.maxPlayers.clamp(0, 8);
+                  final filledSlots = match.joinedPlayers.clamp(0, visibleSlots);
 
                   return SmallCard(
+                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -464,16 +473,18 @@ class _HomeContent extends StatelessWidget {
                                   Text(
                                     '${_capitalize(match.sport)} ${match.format} | ${match.city}',
                                     style: GoogleFonts.dmSans(
-                                      fontSize: 13,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                       color: AppColors.dark,
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  const SizedBox(height: 4),
                                   Text(
-                                    '${_formatHomeMatchDate(match.date)} ${match.timeStart} | $slotsLeft slots left',
+                                    '${_formatHomeMatchDate(match.date)} ${match.timeStart} · $slotsLeft slots left',
                                     style: GoogleFonts.dmSans(
-                                        fontSize: 10, color: AppColors.muted),
+                                      fontSize: 10.5,
+                                      color: AppColors.muted,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -489,7 +500,9 @@ class _HomeContent extends StatelessWidget {
                               ),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 7),
+                                  horizontal: 18,
+                                  vertical: 9,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.green,
                                   borderRadius: BorderRadius.circular(30),
@@ -497,7 +510,7 @@ class _HomeContent extends StatelessWidget {
                                 child: Text(
                                   isJoined ? 'View' : 'Join',
                                   style: GoogleFonts.dmSans(
-                                    fontSize: 11,
+                                    fontSize: 11.5,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.white,
                                   ),
@@ -506,20 +519,28 @@ class _HomeContent extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 14),
                         Row(
-                          children: List.generate(match.maxPlayers.clamp(0, 8), (index) {
-                            final filled = index < match.joinedPlayers.clamp(0, 8);
+                          children: List.generate(visibleSlots, (index) {
+                            final filled = index < filledSlots;
                             return Padding(
-                              padding: const EdgeInsets.only(right: 5),
-                              child: filled
-                                  ? const PlayerDot(initials: 'P', filled: true)
-                                  : const PlayerDot(),
+                              padding: const EdgeInsets.only(right: 7),
+                              child: PlayerDot(
+                                initials: filled
+                                    ? _playerInitialsForIndex(index)
+                                    : null,
+                                filled: filled,
+                              ),
                             );
                           }),
                         ),
-                        const SizedBox(height: 8),
-                        AppProgress(progress),
+                        const SizedBox(height: 14),
+                        Center(
+                          child: SizedBox(
+                            width: 360,
+                            child: AppProgress(progress),
+                          ),
+                        ),
                       ],
                     ),
                   );
