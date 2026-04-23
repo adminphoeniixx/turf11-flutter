@@ -49,7 +49,14 @@ class TeamModel {
           _readBool(merged, const ['can_manage', 'can_edit', 'can_update']) ??
               isCaptain,
       memberCount:
-          _readInt(merged, const ['members_count', 'member_count']) ??
+          _readInt(
+            merged,
+            const ['members_count', 'member_count', 'players_count'],
+          ) ??
+              _readListCount(merged['members']) ??
+              _readListCount(merged['team_members']) ??
+              _readListCount(merged['member_ids']) ??
+              _readListCount(merged['member_names']) ??
               members.length,
       captainName: _readString(
         captainMap.isEmpty ? merged : captainMap,
@@ -92,6 +99,15 @@ class TeamModel {
       captainName: captainName ?? this.captainName,
       members: members ?? this.members,
     );
+  }
+
+  int get playerCount {
+    final counts = <int>[
+      memberCount,
+      members.length,
+      if (isCaptain || captainName.trim().isNotEmpty) 1,
+    ];
+    return counts.reduce((current, next) => current > next ? current : next);
   }
 
   static List<TeamMemberModel> _extractMembers(Map<String, dynamic> source) {
@@ -148,6 +164,13 @@ class TeamModel {
       return Map<String, dynamic>.from(value);
     }
     return <String, dynamic>{};
+  }
+
+  static int? _readListCount(dynamic value) {
+    if (value is List) {
+      return value.length;
+    }
+    return null;
   }
 
   static int? _readInt(Map<String, dynamic> source, List<String> keys) {
@@ -253,10 +276,24 @@ class TeamMemberModel {
       role: TeamModel._readString(
         merged,
         const ['role', 'member_role'],
-        fallback: isCaptain ? 'Captain' : 'Member',
+        fallback: isCaptain ? 'Captain' : 'Player',
       ),
       isCaptain: isCaptain,
     );
+  }
+
+  String get displayRole {
+    final normalized = role.trim().toLowerCase();
+    if (normalized == 'member') {
+      return 'Player';
+    }
+    if (normalized == 'captain') {
+      return 'Captain';
+    }
+    if (normalized.isEmpty) {
+      return isCaptain ? 'Captain' : 'Player';
+    }
+    return role;
   }
 
   String get initials {
@@ -279,12 +316,14 @@ class TeamInviteModel {
   final String code;
   final String inviteLink;
   final String whatsappUrl;
+  final String shareMessage;
   final String message;
 
   const TeamInviteModel({
     required this.code,
     required this.inviteLink,
     required this.whatsappUrl,
+    required this.shareMessage,
     required this.message,
   });
 
@@ -305,6 +344,11 @@ class TeamInviteModel {
       whatsappUrl: TeamModel._readString(
         merged,
         const ['whatsapp_url', 'whatsapp_link'],
+        fallback: '',
+      ),
+      shareMessage: TeamModel._readString(
+        merged,
+        const ['share_message', 'share_text', 'message_text'],
         fallback: '',
       ),
       message: TeamModel._readString(

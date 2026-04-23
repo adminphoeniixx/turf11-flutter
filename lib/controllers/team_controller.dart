@@ -8,6 +8,7 @@ class TeamController extends GetxController {
   final teams = <TeamModel>[].obs;
   final selectedTeam = Rxn<TeamModel>();
   final invite = Rxn<TeamInviteModel>();
+  final registeringTournamentTeamId = RxnInt();
   final isLoading = false.obs;
   final isDetailLoading = false.obs;
   final isInviteLoading = false.obs;
@@ -147,7 +148,7 @@ class TeamController extends GetxController {
     required int playerTeamId,
   }) async {
     try {
-      isSaving.value = true;
+      registeringTournamentTeamId.value = playerTeamId;
       final result = await TeamService.registerTeamForTournament(
         tournamentId: tournamentId,
         playerTeamId: playerTeamId,
@@ -164,7 +165,7 @@ class TeamController extends GetxController {
         message: message,
       );
     } finally {
-      isSaving.value = false;
+      registeringTournamentTeamId.value = null;
     }
   }
 

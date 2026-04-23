@@ -39,7 +39,7 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BackRow(label: 'Home', onBack: () => Navigator.pop(context)),
+            BackRow(label: 'Wallet', onBack: () => Navigator.pop(context)),
             Expanded(
               child: Obx(() {
                 final wallet = _walletController.wallet.value;

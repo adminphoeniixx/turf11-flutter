@@ -55,7 +55,7 @@ class _TurfListScreenState extends State<TurfListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.showBackButton)
-              BackRow(label: 'Home', onBack: () => Navigator.pop(context)),
+              BackRow(label: 'Turfs', onBack: () => Navigator.pop(context)),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),

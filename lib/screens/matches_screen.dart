@@ -44,7 +44,7 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BackRow(label: 'Home', onBack: () => Navigator.pop(context)),
+            BackRow(label: 'Create Match', onBack: () => Navigator.pop(context)),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
@@ -237,7 +237,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BackRow(label: 'Home', onBack: () => Navigator.pop(context)),
+            BackRow(label: 'Join Match', onBack: () => Navigator.pop(context)),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),

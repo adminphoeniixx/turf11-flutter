@@ -172,10 +172,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     const SizedBox(height: 10),
                     Obx(() {
                       if (_turfController.isSlotsLoading.value) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
+                        return const _BookingSlotsLoadingState();
                       }
 
                       if (_turfController.slotsErrorMessage.value.isNotEmpty &&
@@ -503,12 +500,7 @@ class _BookingScreenState extends State<BookingScreen> {
       final detailError = _turfController.detailErrorMessage.value;
 
       if (isLoading) {
-        return const SmallCard(
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        );
+        return const _BookingHeroLoadingCard();
       }
 
       return Container(
@@ -1002,5 +994,132 @@ class _BookingScreenState extends State<BookingScreen> {
   String _formatAmount(num value) {
     final isWhole = value == value.roundToDouble();
     return value.toStringAsFixed(isWhole ? 0 : 2);
+  }
+}
+
+class _BookingSlotsLoadingState extends StatelessWidget {
+  const _BookingSlotsLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return SmallCard(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.greenLt,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  LucideIcons.clock3,
+                  size: 16,
+                  color: AppColors.green,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Loading slots',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Checking the latest availability for this date.',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 10.5,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: List.generate(
+              6,
+              (index) => ShimmerBox(
+                width: index.isEven ? 116 : 104,
+                height: 58,
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BookingHeroLoadingCard extends StatelessWidget {
+  const _BookingHeroLoadingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2C3E20), AppColors.green],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const ShimmerBox(
+            width: 180,
+            height: 22,
+            borderRadius: BorderRadius.all(Radius.circular(8)),
+          ),
+          const SizedBox(height: 10),
+          ShimmerBox(
+            width: MediaQuery.of(context).size.width * 0.55,
+            height: 12,
+            borderRadius: const BorderRadius.all(Radius.circular(8)),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: const [
+              ShimmerBox(
+                width: 92,
+                height: 28,
+                borderRadius: BorderRadius.all(Radius.circular(20)),
+              ),
+              ShimmerBox(
+                width: 110,
+                height: 28,
+                borderRadius: BorderRadius.all(Radius.circular(20)),
+              ),
+              ShimmerBox(
+                width: 96,
+                height: 28,
+                borderRadius: BorderRadius.all(Radius.circular(20)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

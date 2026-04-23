@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../controllers/team_controller.dart';
 import '../data/models/team_model.dart';
@@ -51,7 +53,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.showBackButton)
-              BackRow(label: 'Home', onBack: () => Navigator.pop(context)),
+              BackRow(label: 'Teams', onBack: () => Navigator.pop(context)),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _teamController.loadTeams,
@@ -131,7 +133,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
       final totalTeams = _teamController.teams.length;
       final totalPlayers = _teamController.teams.fold<int>(
         0,
-        (total, team) => total + team.memberCount,
+        (total, team) => total + team.playerCount,
       );
 
       return Container(
@@ -498,7 +500,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                             const SizedBox(height: 12),
                             if (team.members.isEmpty)
                               Text(
-                                'Members will appear here once the team detail API returns them.',
+                                'Players will appear here once the team detail API returns them.',
                                 style: GoogleFonts.dmSans(
                                   fontSize: 11,
                                   color: AppColors.muted,
@@ -603,6 +605,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (sheetContext) {
+        final inviteMessage = _inviteMessage(team, invite);
+        final hasWhatsapp = invite.whatsappUrl.trim().isNotEmpty;
         return SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -623,13 +627,60 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 _InviteRow(label: 'Invite Link', value: invite.inviteLink),
                 if (invite.whatsappUrl.isNotEmpty)
                   _InviteRow(label: 'WhatsApp URL', value: invite.whatsappUrl),
+                if (inviteMessage.isNotEmpty)
+                  _InviteRow(label: 'Share Message', value: inviteMessage),
                 const SizedBox(height: 14),
-                AppButton(
-                  label: 'Copy Invite Link',
-                  onTap: () => _copyText(
-                    invite.inviteLink.isNotEmpty ? invite.inviteLink : invite.code,
-                    'Invite copied.',
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'WhatsApp',
+                        onTap: hasWhatsapp
+                            ? () => _openWhatsappInvite(invite, inviteMessage)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: AppButton(
+                        label: 'More Apps',
+                        isOutline: true,
+                        onTap: () => _shareInvite(team, invite),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'Copy Message',
+                        isOutline: true,
+                        onTap: () => _copyText(
+                          inviteMessage.isNotEmpty
+                              ? inviteMessage
+                              : invite.inviteLink.isNotEmpty
+                                  ? invite.inviteLink
+                                  : invite.code,
+                          'Invite message copied.',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: AppButton(
+                        label: 'Copy Link',
+                        isOutline: true,
+                        onTap: () => _copyText(
+                          invite.inviteLink.isNotEmpty
+                              ? invite.inviteLink
+                              : invite.code,
+                          'Invite link copied.',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -758,7 +809,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
   Future<void> _removeMember(TeamModel team, TeamMemberModel member) async {
     final shouldRemove = await _confirmAction(
-      title: 'Remove Member',
+      title: 'Remove Player',
       message: 'Remove ${member.name} from ${team.name}?',
     );
     if (shouldRemove != true) {
@@ -824,6 +875,62 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     await Clipboard.setData(ClipboardData(text: value));
     Get.snackbar('Copied', message);
   }
+
+  String _inviteMessage(TeamModel team, TeamInviteModel invite) {
+    if (invite.shareMessage.trim().isNotEmpty) {
+      return invite.shareMessage.trim();
+    }
+    final code = invite.code.isNotEmpty ? invite.code : team.code;
+    final link = invite.inviteLink.trim();
+    final buffer = StringBuffer('Join my team "${team.name}" on Turf11!');
+    if (code.isNotEmpty) {
+      buffer.write('\n\nUse code: $code');
+    }
+    if (link.isNotEmpty) {
+      buffer.write('\nOr tap: $link');
+    }
+    return buffer.toString();
+  }
+
+  Future<void> _shareInvite(TeamModel team, TeamInviteModel invite) async {
+    final message = _inviteMessage(team, invite);
+    await SharePlus.instance.share(
+      ShareParams(
+        text: message.isNotEmpty ? message : invite.inviteLink,
+        subject: 'Join ${team.name} on Turf11',
+      ),
+    );
+  }
+
+  Future<void> _openWhatsappInvite(
+    TeamInviteModel invite,
+    String inviteMessage,
+  ) async {
+    final whatsappUrl = invite.whatsappUrl.trim();
+    final fallbackUrl = inviteMessage.isNotEmpty
+        ? 'https://wa.me/?text=${Uri.encodeComponent(inviteMessage)}'
+        : '';
+
+    final target = whatsappUrl.isNotEmpty ? whatsappUrl : fallbackUrl;
+    if (target.isEmpty) {
+      Get.snackbar('Error', 'No WhatsApp invite is available yet.');
+      return;
+    }
+
+    final uri = Uri.tryParse(target);
+    if (uri == null) {
+      Get.snackbar('Error', 'WhatsApp invite link is invalid.');
+      return;
+    }
+
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched) {
+      Get.snackbar('Error', 'Unable to open WhatsApp right now.');
+    }
+  }
 }
 
 class _TeamSummaryCard extends StatelessWidget {
@@ -882,7 +989,7 @@ class _TeamSummaryCard extends StatelessWidget {
                   ),
                 ),
                 AppBadge(
-                  team.isCaptain ? 'Captain' : 'Member',
+                  team.isCaptain ? 'Captain' : 'Player',
                   type: team.isCaptain ? BadgeType.green : BadgeType.dark,
                 ),
               ],
@@ -894,7 +1001,7 @@ class _TeamSummaryCard extends StatelessWidget {
               children: [
                 _MiniPill(
                   icon: LucideIcons.users,
-                  label: '${team.memberCount} players',
+                  label: '${team.playerCount} players',
                 ),
                 if (team.code.isNotEmpty)
                   _MiniPill(
@@ -973,8 +1080,8 @@ class _DetailHero extends StatelessWidget {
             children: [
               Expanded(
                 child: _MiniStat(
-                  value: '${team.memberCount}',
-                  label: 'Members',
+                  value: '${team.playerCount}',
+                  label: 'Players',
                 ),
               ),
               const SizedBox(width: 10),
@@ -1029,7 +1136,7 @@ class _MemberTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   [
-                    if (member.role.isNotEmpty) member.role,
+                    if (member.displayRole.isNotEmpty) member.displayRole,
                     if (member.city.isNotEmpty) member.city,
                     if (member.phone.isNotEmpty) member.phone,
                   ].join(' | '),

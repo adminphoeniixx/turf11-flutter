@@ -37,7 +37,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     const _NotificationItem(
       icon: LucideIcons.trophy,
       iconBg: Color(0xFFE6F0FF),
-      iconColor: Color(0xFF2563EB),
+      iconColor: AppColors.green,
       title: 'Tournament Registration Open',
       body: 'Gurugram T10 Cup is now accepting teams. Entry fee is Rs 500.',
       time: 'Yesterday, 3:00 PM',

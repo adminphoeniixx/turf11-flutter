@@ -23,6 +23,7 @@ class ApiConstants {
   static const turfsNearby = "/turfs/nearby";
   static const teams = "/teams";
   static const joinTeam = "/teams/join";
+  static const tournaments = "/tournaments";
 
   static String matchDetail(dynamic matchId) => "/matches/$matchId";
   static String joinMatch(dynamic matchId) => "/matches/$matchId/join";
@@ -37,4 +38,8 @@ class ApiConstants {
   static String teamLeave(dynamic teamId) => "/teams/$teamId/leave";
   static String tournamentRegister(dynamic tournamentId) =>
       "/tournaments/$tournamentId/register";
+  static String tournamentTeams(dynamic tournamentId) =>
+      "/tournaments/$tournamentId/teams";
+  static String tournamentTeamPlayers(dynamic tournamentId, dynamic teamId) =>
+      "/tournaments/$tournamentId/teams/$teamId/players";
 }

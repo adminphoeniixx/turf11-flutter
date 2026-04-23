@@ -6,32 +6,36 @@ class TeamService {
   static Future<List<TeamModel>> fetchMyTeams() async {
     final res = await ApiClient.get(ApiConstants.teams);
     final root = _toMap(res.data);
-    final myTeams = _extractTeams(root['my_teams']).map(
-      (team) => team.copyWith(
-        isCaptain: true,
-        canManage: true,
-      ),
-    );
-    final joinedTeams = _extractTeams(root['joined_teams']).map(
-      (team) => team.copyWith(
-        isCaptain: false,
-        canManage: false,
-      ),
-    );
+    final myTeams = _extractTeams(root['my_teams'])
+        .map(
+          (team) => team.copyWith(
+            isCaptain: true,
+            canManage: true,
+          ),
+        )
+        .toList();
+    final joinedTeams = _extractTeams(root['joined_teams'])
+        .map(
+          (team) => team.copyWith(
+            isCaptain: false,
+            canManage: false,
+          ),
+        )
+        .toList();
 
     final combined = <TeamModel>[
       ...myTeams,
       ...joinedTeams,
     ];
     if (combined.isNotEmpty) {
-      return combined;
+      return _hydrateTeams(combined);
     }
 
     final candidates = [root['teams'], root['data'], root];
     for (final candidate in candidates) {
       final teams = _extractTeams(candidate);
       if (teams.isNotEmpty) {
-        return teams;
+        return _hydrateTeams(teams);
       }
     }
 
@@ -146,6 +150,30 @@ class TeamService {
       );
     }
     return TeamActionResult.fromJson(root);
+  }
+
+  static Future<List<TeamModel>> _hydrateTeams(List<TeamModel> teams) async {
+    final hydrated = await Future.wait(
+      teams.map((team) async {
+        if (team.id <= 0) {
+          return team;
+        }
+        try {
+          final detail = await fetchTeamDetail(team.id);
+          return detail.copyWith(
+            isCaptain: team.isCaptain,
+            canManage: team.canManage,
+            code: detail.code.isNotEmpty ? detail.code : team.code,
+            captainName: detail.captainName.isNotEmpty
+                ? detail.captainName
+                : team.captainName,
+          );
+        } catch (_) {
+          return team;
+        }
+      }),
+    );
+    return hydrated;
   }
 
   static List<TeamModel> _extractTeams(dynamic candidate) {

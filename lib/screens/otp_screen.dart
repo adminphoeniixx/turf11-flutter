@@ -77,7 +77,7 @@ class _OtpScreenState extends State<OtpScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BackRow(label: 'Back', onBack: () => Navigator.pop(context)),
+            BackRow(label: 'OTP Verification', onBack: () => Navigator.pop(context)),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),

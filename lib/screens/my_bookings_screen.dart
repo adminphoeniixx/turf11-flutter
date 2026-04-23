@@ -36,7 +36,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BackRow(label: 'Profile', onBack: () => Navigator.pop(context)),
+            BackRow(label: 'My Bookings', onBack: () => Navigator.pop(context)),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
               child: Column(

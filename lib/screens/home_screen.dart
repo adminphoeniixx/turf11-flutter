@@ -5,9 +5,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../controllers/profile_controller.dart';
 import '../controllers/match_controller.dart';
+import '../controllers/tournament_controller.dart';
 import '../controllers/turf_controller.dart';
 import '../controllers/wallet_controller.dart';
 import '../data/models/profile_model.dart';
+import '../data/models/tournament_model.dart';
 import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bottom_nav.dart';
@@ -96,6 +98,9 @@ class _HomeContent extends StatelessWidget {
     final turfController = Get.isRegistered<TurfController>()
         ? Get.find<TurfController>()
         : Get.put(TurfController());
+    final tournamentController = Get.isRegistered<TournamentController>()
+        ? Get.find<TournamentController>()
+        : Get.put(TournamentController());
     final profileController = Get.isRegistered<ProfileController>()
         ? Get.find<ProfileController>()
         : Get.put(ProfileController());
@@ -114,6 +119,10 @@ class _HomeContent extends StatelessWidget {
     if (matchController.nearbyMatches.isEmpty &&
         !matchController.isNearbyLoading.value) {
       matchController.loadNearbyMatches();
+    }
+    if (tournamentController.tournaments.isEmpty &&
+        !tournamentController.isLoading.value) {
+      tournamentController.loadTournaments();
     }
 
     return SafeArea(
@@ -472,13 +481,33 @@ class _HomeContent extends StatelessWidget {
                     ),
                   );
                 }),
-                Text(
-                  'Active Matches Nearby',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.dark,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Active Matches Nearby',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const JoinMatchScreen(),
+                        ),
+                      ),
+                      child: Text(
+                        'See all ->',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.green,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 Obx(() {
@@ -606,65 +635,197 @@ class _HomeContent extends StatelessWidget {
                   );
                 }),
                 const SizedBox(height: 4),
-                Text(
-                  'Tournaments',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.dark,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SmallCard(
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            const TournamentScreen(showBackButton: true),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Tournaments',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dark,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            color: AppColors.greenLt,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(LucideIcons.trophy,
-                              color: AppColors.green, size: 22),
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const TournamentScreen(showBackButton: true),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Gurugram T10 Cup',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.dark,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Apr 12 | Cricket | 16 teams | Rs 500',
-                                style: GoogleFonts.dmSans(
-                                    fontSize: 10, color: AppColors.muted),
-                              ),
-                              const SizedBox(height: 5),
-                              const AppBadge('Registration Open',
-                                  type: BadgeType.amber),
-                            ],
-                          ),
+                      ),
+                      child: Text(
+                        'See all ->',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.green,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Obx(() {
+                  final tournaments = tournamentController.tournaments;
+                  if (tournamentController.isLoading.value &&
+                      tournaments.isEmpty) {
+                    return const _HomeTournamentShimmerCard();
+                  }
+
+                  if (tournaments.isEmpty) {
+                    return SmallCard(
+                      child: Row(
+                        children: [
+                          const Icon(
+                            LucideIcons.trophy,
+                            color: AppColors.green,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              tournamentController.errorMessage.value.isNotEmpty
+                                  ? tournamentController.errorMessage.value
+                                  : 'Tournament data is not available right now.',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final tournament = tournaments.first;
+                  return _HomeTournamentCard(tournament: tournament);
+                }),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeTournamentCard extends StatelessWidget {
+  final TournamentModel tournament;
+
+  const _HomeTournamentCard({
+    required this.tournament,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SmallCard(
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const TournamentScreen(showBackButton: true),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: AppColors.greenLt,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(
+                LucideIcons.trophy,
+                color: AppColors.green,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tournament.name,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.dark,
                     ),
                   ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${tournament.startDate} | ${tournament.sport} | ${tournament.maxTeams} teams | ${tournament.entryFeeLabel}',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  AppBadge(
+                    tournament.statusLabel,
+                    type: _badgeType(tournament.status),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  BadgeType _badgeType(String status) {
+    switch (status.trim().toLowerCase()) {
+      case 'registration_open':
+        return BadgeType.amber;
+      case 'completed':
+        return BadgeType.dark;
+      case 'ongoing':
+        return BadgeType.green;
+      default:
+        return BadgeType.green;
+    }
+  }
+}
+
+class _HomeTournamentShimmerCard extends StatelessWidget {
+  const _HomeTournamentShimmerCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return SmallCard(
+      child: Row(
+        children: const [
+          ShimmerBox(
+            width: 46,
+            height: 46,
+            borderRadius: BorderRadius.all(Radius.circular(14)),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerBox(
+                  width: 170,
+                  height: 14,
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
                 ),
-              ]),
+                SizedBox(height: 6),
+                ShimmerBox(
+                  width: 220,
+                  height: 10,
+                  borderRadius: BorderRadius.all(Radius.circular(8)),
+                ),
+                SizedBox(height: 8),
+                ShimmerBox(
+                  width: 110,
+                  height: 22,
+                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                ),
+              ],
             ),
           ),
         ],

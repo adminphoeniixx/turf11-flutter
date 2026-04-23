@@ -54,7 +54,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BackRow(label: 'Login', onBack: () => Navigator.pop(context)),
+            BackRow(label: 'Register', onBack: () => Navigator.pop(context)),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
