@@ -16,6 +16,7 @@ import 'booking_screen.dart';
 import 'matches_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
+import 'teams_screen.dart';
 import 'tournament_screen.dart';
 import 'turf_list_screen.dart';
 import 'wallet_razorpay_screen.dart';
@@ -333,6 +334,65 @@ class _HomeContent extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const TeamsScreen(showBackButton: true),
+                    ),
+                  ),
+                  child: SmallCard(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: AppColors.greenLt,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            LucideIcons.shield,
+                            color: AppColors.green,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Manage Teams',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.dark,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Create squads, invite players, and use them in tournaments.',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          'Open',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 18),
                 Row(

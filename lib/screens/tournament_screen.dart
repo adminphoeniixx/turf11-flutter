@@ -1,17 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../controllers/team_controller.dart';
+import '../data/models/team_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import 'teams_screen.dart';
 
-class TournamentScreen extends StatelessWidget {
+class TournamentScreen extends StatefulWidget {
   final bool showBackButton;
 
   const TournamentScreen({
     super.key,
     this.showBackButton = false,
   });
+
+  @override
+  State<TournamentScreen> createState() => _TournamentScreenState();
+}
+
+class _TournamentScreenState extends State<TournamentScreen> {
+  late final TeamController _teamController;
+
+  @override
+  void initState() {
+    super.initState();
+    _teamController = Get.isRegistered<TeamController>()
+        ? Get.find<TeamController>()
+        : Get.put(TeamController());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_teamController.teams.isEmpty && !_teamController.isLoading.value) {
+        _teamController.loadTeams();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +45,7 @@ class TournamentScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (showBackButton)
+            if (widget.showBackButton)
               BackRow(label: 'Home', onBack: () => Navigator.pop(context)),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
@@ -38,37 +62,58 @@ class TournamentScreen extends StatelessWidget {
                   ),
                   Text(
                     'Compete. Win. Repeat.',
-                    style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted),
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
                   ),
                 ],
               ),
             ),
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20,vertical: 15),
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
               child: ChipRow(['Open', 'My Team', 'Completed']),
             ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
                 child: ListView(
-                  children: const [
+                  children: [
                     _TournamentCard(
+                      tournamentId: 1,
                       title: 'Gurugram T10 Cup',
                       dates: 'Apr 12-20 | Cricket',
                       teams: 16,
                       prize: 'Rs 5K',
                       entry: 'Rs 500',
                       status: 'Registration Open',
-                      gradientColors: [Color(0xFF2C3E20), Color(0xFF3D6B35)],
+                      gradientColors: const [
+                        Color(0xFF2C3E20),
+                        Color(0xFF3D6B35),
+                      ],
+                      onRegister: () => _showRegisterSheet(
+                        context,
+                        tournamentId: 1,
+                        tournamentName: 'Gurugram T10 Cup',
+                      ),
                     ),
                     _TournamentCard(
+                      tournamentId: 2,
                       title: 'Sector Flash T20',
                       dates: 'Apr 26 | Cricket | 1 Day',
                       teams: 8,
                       prize: 'Rs 3K',
                       entry: 'Rs 300',
                       status: 'Coming Soon',
-                      gradientColors: [Color(0xFF1A3A5C), Color(0xFF2563EB)],
+                      gradientColors: const [
+                        Color(0xFF1A3A5C),
+                        Color(0xFF2563EB),
+                      ],
+                      onRegister: () => _showRegisterSheet(
+                        context,
+                        tournamentId: 2,
+                        tournamentName: 'Sector Flash T20',
+                      ),
                     ),
                   ],
                 ),
@@ -79,9 +124,104 @@ class TournamentScreen extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _showRegisterSheet(
+    BuildContext context, {
+    required int tournamentId,
+    required String tournamentName,
+  }) async {
+    if (_teamController.teams.isEmpty && !_teamController.isLoading.value) {
+      await _teamController.loadTeams();
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        return SizedBox(
+          height: MediaQuery.of(sheetContext).size.height * 0.75,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            child: Obx(() {
+              final teams = _teamController.teams;
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Register for $tournamentName',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_teamController.isLoading.value && teams.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (teams.isEmpty) ...[
+                      Text(
+                        'Create a team first, then register it here.',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      AppButton(
+                        label: 'Open Teams',
+                        onTap: () {
+                          Navigator.of(sheetContext).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const TeamsScreen(showBackButton: true),
+                            ),
+                          );
+                        },
+                      ),
+                    ] else ...[
+                      ...teams.map(
+                        (team) => _TournamentTeamTile(
+                          team: team,
+                          isLoading: _teamController.isSaving.value,
+                          onTap: () async {
+                            final result =
+                                await _teamController.registerTeamForTournament(
+                              tournamentId: tournamentId,
+                              playerTeamId: team.id,
+                            );
+                            if (result.success && mounted) {
+                              Navigator.of(sheetContext).pop();
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _TournamentCard extends StatelessWidget {
+  final int tournamentId;
   final String title;
   final String dates;
   final String status;
@@ -89,8 +229,10 @@ class _TournamentCard extends StatelessWidget {
   final String prize;
   final String entry;
   final List<Color> gradientColors;
+  final VoidCallback onRegister;
 
   const _TournamentCard({
+    required this.tournamentId,
     required this.title,
     required this.dates,
     required this.status,
@@ -98,6 +240,7 @@ class _TournamentCard extends StatelessWidget {
     required this.prize,
     required this.entry,
     required this.gradientColors,
+    required this.onRegister,
   });
 
   @override
@@ -137,7 +280,11 @@ class _TournamentCard extends StatelessWidget {
                     color: Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(LucideIcons.trophy, color: Colors.white, size: 26),
+                  child: const Icon(
+                    LucideIcons.trophy,
+                    color: Colors.white,
+                    size: 26,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -186,15 +333,19 @@ class _TournamentCard extends StatelessWidget {
                       child: AppButton(
                         label: 'Register Team',
                         trailingIcon: Icons.arrow_forward,
-                        onTap: () {},
+                        onTap: onRegister,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: AppButton(
-                        label: 'Schedule',
+                        label: 'My Teams',
                         isOutline: true,
-                        onTap: () {},
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const TeamsScreen(showBackButton: true),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -237,4 +388,77 @@ class _TournamentCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TournamentTeamTile extends StatelessWidget {
+  final TeamModel team;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _TournamentTeamTile({
+    required this.team,
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SmallCard(
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.greenLt,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              LucideIcons.shield,
+              color: AppColors.green,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  team.name,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.dark,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${team.memberCount} players | ${_capitalize(team.sport)}',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10.5,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            width: 110,
+            child: AppButton(
+              label: isLoading ? 'Please wait' : 'Select',
+              onTap: isLoading ? null : onTap,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _capitalize(String value) {
+  if (value.trim().isEmpty) {
+    return '-';
+  }
+  final normalized = value.trim().toLowerCase();
+  return normalized[0].toUpperCase() + normalized.substring(1);
 }

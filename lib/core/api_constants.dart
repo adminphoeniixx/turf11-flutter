@@ -21,6 +21,8 @@ class ApiConstants {
   static const walletTopupOrderLegacy = "/wallet/topup/order";
   static const walletTopupVerify = "/wallet/verify";
   static const turfsNearby = "/turfs/nearby";
+  static const teams = "/teams";
+  static const joinTeam = "/teams/join";
 
   static String matchDetail(dynamic matchId) => "/matches/$matchId";
   static String joinMatch(dynamic matchId) => "/matches/$matchId/join";
@@ -28,4 +30,11 @@ class ApiConstants {
   static String turfDetail(dynamic turfId) => "/turfs/$turfId";
   static String turfSlots(dynamic turfId) => "/turfs/$turfId/slots";
   static String cancelBooking(dynamic bookingId) => "/bookings/$bookingId/cancel";
+  static String teamDetail(dynamic teamId) => "/teams/$teamId";
+  static String teamInviteLink(dynamic teamId) => "/teams/$teamId/invite-link";
+  static String teamRemoveMember(dynamic teamId, dynamic memberId) =>
+      "/teams/$teamId/remove/$memberId";
+  static String teamLeave(dynamic teamId) => "/teams/$teamId/leave";
+  static String tournamentRegister(dynamic tournamentId) =>
+      "/tournaments/$tournamentId/register";
 }
