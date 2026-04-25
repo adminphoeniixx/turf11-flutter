@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../controllers/booking_controller.dart';
+import '../data/models/booking_create_model.dart';
 import '../data/models/booking_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
@@ -17,6 +21,7 @@ class MyBookingsScreen extends StatefulWidget {
 
 class _MyBookingsScreenState extends State<MyBookingsScreen> {
   late final BookingController controller;
+  final TextEditingController _joinCodeController = TextEditingController();
 
   @override
   void initState() {
@@ -26,6 +31,73 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         : Get.put(BookingController());
     WidgetsBinding.instance
         .addPostFrameCallback((_) => controller.loadBookings());
+  }
+
+  Widget _joinByCodeCard() {
+    return SmallCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Join Booking with Code',
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: AppColors.dark,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Use a shared booking code to join someone else\'s booking.',
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              color: AppColors.muted,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _joinCodeController,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(
+              hintText: 'e.g. BK-AB3X5',
+            ),
+          ),
+          const SizedBox(height: 12),
+          Obx(
+            () => AppButton(
+              label: controller.isCreateLoading.value ? 'Joining...' : 'Join Booking',
+              onTap: controller.isCreateLoading.value
+                  ? null
+                  : () async {
+                      final code = _joinCodeController.text.trim().toUpperCase();
+                      if (code.isEmpty) {
+                        Get.snackbar('Error', 'Please enter a valid booking code.');
+                        return;
+                      }
+                      final result = await controller.joinBookingByCode(code);
+                      if (result.success) {
+                        _joinCodeController.clear();
+                      }
+                      Get.snackbar(
+                        result.success ? 'Success' : 'Error',
+                        result.message.isNotEmpty
+                            ? result.message
+                            : result.success
+                                ? 'Booking joined successfully.'
+                                : 'Unable to join booking.',
+                      );
+                    },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _joinCodeController.dispose();
+    super.dispose();
   }
 
   @override
@@ -63,6 +135,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
+                  _joinByCodeCard(),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
@@ -95,12 +169,28 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
                 return RefreshIndicator(
                   color: AppColors.green,
-                  onRefresh: controller.loadBookings,
+                  onRefresh: () => controller.loadBookings(),
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 90),
                     physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: bookings.length,
+                    itemCount: bookings.length + (controller.hasMoreBookings ? 1 : 0),
                     itemBuilder: (context, index) {
+                      if (index >= bookings.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Obx(
+                            () => AppButton(
+                              label: controller.isLoadMoreLoading.value
+                                  ? 'Loading...'
+                                  : 'Load More',
+                              isOutline: true,
+                              onTap: controller.isLoadMoreLoading.value
+                                  ? null
+                                  : () => controller.loadBookings(loadMore: true),
+                            ),
+                          ),
+                        );
+                      }
                       final booking = bookings[index];
                       final isCanceling = controller.cancelingBookingIds.contains(
                         booking.id,
@@ -109,6 +199,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                         booking: booking,
                         isCanceling: isCanceling,
                         onCancel: () => _showCancelBookingSheet(booking),
+                        onInvite: () => _showInviteLinkSheet(booking),
+                        onPlayers: () => _showPlayersSheet(booking),
                       );
                     },
                   ),
@@ -409,6 +501,270 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     );
   }
 
+  Future<void> _showInviteLinkSheet(BookingModel booking) async {
+    final invite = await controller.loadBookingInviteLink(booking.id);
+    if (!mounted) {
+      return;
+    }
+    if (!invite.success &&
+        invite.code.isEmpty &&
+        invite.inviteLink.isEmpty &&
+        invite.whatsappUrl.isEmpty) {
+      Get.snackbar(
+        'Error',
+        invite.message.isNotEmpty ? invite.message : 'Unable to load invite details.',
+      );
+      return;
+    }
+
+    final shareText = [
+      if (invite.code.isNotEmpty) 'Join my booking with code: ${invite.code}',
+      if (invite.inviteLink.isNotEmpty) invite.inviteLink,
+    ].join('\n');
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Booking Invite',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _InviteInfoRow(label: 'Code', value: invite.code),
+                _InviteInfoRow(label: 'Invite Link', value: invite.inviteLink),
+                if (invite.whatsappUrl.isNotEmpty)
+                  _InviteInfoRow(label: 'WhatsApp URL', value: invite.whatsappUrl),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'WhatsApp',
+                        onTap: invite.whatsappUrl.isEmpty
+                            ? null
+                            : () async {
+                                final uri = Uri.tryParse(invite.whatsappUrl);
+                                if (uri == null) {
+                                  Get.snackbar('Error', 'WhatsApp link is invalid.');
+                                  return;
+                                }
+                                await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: AppButton(
+                        label: 'Share',
+                        isOutline: true,
+                        onTap: () => SharePlus.instance.share(
+                          ShareParams(text: shareText),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'Copy Code',
+                        isOutline: true,
+                        onTap: () async {
+                          await Clipboard.setData(ClipboardData(text: invite.code));
+                          Get.snackbar('Copied', 'Booking code copied.');
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: AppButton(
+                        label: 'Copy Link',
+                        isOutline: true,
+                        onTap: () async {
+                          await Clipboard.setData(
+                            ClipboardData(
+                              text: invite.inviteLink.isNotEmpty
+                                  ? invite.inviteLink
+                                  : invite.code,
+                            ),
+                          );
+                          Get.snackbar('Copied', 'Booking invite copied.');
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showPlayersSheet(BookingModel booking) async {
+    await controller.loadBookingPlayers(booking.id);
+    if (!mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        return Obx(() {
+          final isLoading = controller.isPlayersLoading.value;
+          final players = controller.bookingPlayers;
+          final error = controller.bookingPlayersErrorMessage.value;
+          return FractionallySizedBox(
+            heightFactor: 0.78,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Joined Players',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    players.isEmpty
+                        ? 'Players who join this booking will appear here.'
+                        : '${players.length} player${players.length == 1 ? '' : 's'} joined this booking.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        if (isLoading) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (error.isNotEmpty) {
+                          return Center(
+                            child: Text(
+                              error,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: AppColors.red,
+                              ),
+                            ),
+                          );
+                        }
+                        if (players.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'No joined players found yet.',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          );
+                        }
+                        return ListView.separated(
+                          itemCount: players.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final player = players[index];
+                            return Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.bg,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Row(
+                                children: [
+                                  AppAvatar(initials: player.initials, size: 42),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          player.name,
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.dark,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          [
+                                            if (player.city.isNotEmpty) player.city,
+                                            if (player.phone.isNotEmpty) player.phone,
+                                          ].join(' | '),
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 10.5,
+                                            color: AppColors.muted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
   String _formatAmount(num value) {
     final isWhole = value == value.roundToDouble();
     return value.toStringAsFixed(isWhole ? 0 : 2);
@@ -419,11 +775,15 @@ class _BookingCard extends StatelessWidget {
   final BookingModel booking;
   final bool isCanceling;
   final VoidCallback onCancel;
+  final VoidCallback onInvite;
+  final VoidCallback onPlayers;
 
   const _BookingCard({
     required this.booking,
     required this.isCanceling,
     required this.onCancel,
+    required this.onInvite,
+    required this.onPlayers,
   });
 
   @override
@@ -520,6 +880,54 @@ class _BookingCard extends StatelessWidget {
           ),
           if (booking.bookingStatus.trim().toLowerCase() == 'confirmed') ...[
             const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onInvite,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.dark,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: const Icon(LucideIcons.share2, size: 16),
+                    label: Text(
+                      'Invite',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onPlayers,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.dark,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: const Icon(LucideIcons.users, size: 16),
+                    label: Text(
+                      'Players',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -624,6 +1032,51 @@ class _BookingsMessage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _InviteInfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InviteInfoRow({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: AppColors.muted,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value.isEmpty ? '-' : value,
+            style: GoogleFonts.dmSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.dark,
+            ),
+          ),
+        ],
       ),
     );
   }

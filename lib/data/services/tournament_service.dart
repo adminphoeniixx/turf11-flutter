@@ -3,8 +3,11 @@ import '../../core/api_constants.dart';
 import '../models/tournament_model.dart';
 
 class TournamentService {
-  static Future<TournamentListResponse> fetchTournaments() async {
-    final res = await ApiClient.get(ApiConstants.tournaments);
+  static Future<TournamentListResponse> fetchTournaments({int page = 1}) async {
+    final res = await ApiClient.get(
+      ApiConstants.tournaments,
+      queryParameters: {'page': page},
+    );
     final data = res.data;
     if (data is Map<String, dynamic>) {
       return TournamentListResponse.fromJson(data);

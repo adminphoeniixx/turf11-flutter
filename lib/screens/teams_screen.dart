@@ -35,6 +35,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
         : Get.put(TeamController());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _teamController.loadTeams();
+      _teamController.loadInvitations();
     });
   }
 
@@ -66,6 +67,8 @@ class _TeamsScreenState extends State<TeamsScreen> {
                       _header(),
                       const SizedBox(height: 16),
                       _joinCard(),
+                      const SizedBox(height: 6),
+                      _invitationsCard(),
                       const SizedBox(height: 6),
                       Obx(() {
                         final teams = _teamController.teams;
@@ -126,6 +129,83 @@ class _TeamsScreenState extends State<TeamsScreen> {
         ),
       ),
     );
+  }
+
+  Widget _invitationsCard() {
+    return Obx(() {
+      final invitations = _teamController.invitations;
+      final isLoading = _teamController.isInvitationsLoading.value;
+      final error = _teamController.invitationsErrorMessage.value;
+
+      return SmallCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Invitations',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                ),
+                if (!isLoading)
+                  TextButton(
+                    onPressed: _teamController.loadInvitations,
+                    child: Text(
+                      'Refresh',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.green,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (isLoading && invitations.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: CircularProgressIndicator(),
+              )
+            else if (error.isNotEmpty && invitations.isEmpty)
+              Text(
+                error,
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  color: AppColors.red,
+                ),
+              )
+            else if (invitations.isEmpty)
+              Text(
+                'No pending invitations yet.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  color: AppColors.muted,
+                ),
+              )
+            else
+              ...invitations.map(
+                (invitation) => _InvitationTile(
+                  invitation: invitation,
+                  isSaving: _teamController.isSaving.value,
+                  onAccept: () => _teamController.respondToInvitation(
+                    invitationId: invitation.id,
+                    response: 'accepted',
+                  ),
+                  onDecline: () => _teamController.respondToInvitation(
+                    invitationId: invitation.id,
+                    response: 'declined',
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _header() {
@@ -446,6 +526,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     _teamController.selectedTeam.value = widget.team;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _teamController.loadTeamDetail(widget.team.id);
+      _teamController.loadNearbyPlayers();
     });
   }
 
@@ -485,6 +566,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                             ),
                           ),
                         ),
+                      if (team.canManage) _nearbyPlayersCard(team),
                       SmallCard(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -526,6 +608,82 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         ),
       ),
     );
+  }
+
+  Widget _nearbyPlayersCard(TeamModel team) {
+    return Obx(() {
+      final players = _teamController.nearbyPlayers;
+      final isLoading = _teamController.isNearbyPlayersLoading.value;
+      final error = _teamController.nearbyPlayersErrorMessage.value;
+
+      return SmallCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Nearby Players',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                ),
+                if (!isLoading)
+                  TextButton(
+                    onPressed: _teamController.loadNearbyPlayers,
+                    child: Text(
+                      'Refresh',
+                      style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.green,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Invite nearby players directly to ${team.name}.',
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                color: AppColors.muted,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (isLoading && players.isEmpty)
+              const Center(child: CircularProgressIndicator())
+            else if (error.isNotEmpty && players.isEmpty)
+              Text(
+                error,
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  color: AppColors.red,
+                ),
+              )
+            else if (players.isEmpty)
+              Text(
+                'No nearby players found right now.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  color: AppColors.muted,
+                ),
+              )
+            else
+              ...players.map(
+                (player) => _NearbyPlayerTile(
+                  player: player,
+                  isSaving: _teamController.isSaving.value,
+                  onInvite: () => _inviteNearbyPlayer(team, player),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _actionPanel(BuildContext context, TeamModel team) {
@@ -687,6 +845,18 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _inviteNearbyPlayer(
+    TeamModel team,
+    NearbyPlayerModel player,
+  ) async {
+    final message = 'Join our team "${team.name}" on Turf11!';
+    await _teamController.invitePlayer(
+      playerId: player.id,
+      referenceId: team.id,
+      message: message,
     );
   }
 
@@ -1161,6 +1331,154 @@ class _MemberTile extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NearbyPlayerTile extends StatelessWidget {
+  final NearbyPlayerModel player;
+  final bool isSaving;
+  final VoidCallback onInvite;
+
+  const _NearbyPlayerTile({
+    required this.player,
+    required this.isSaving,
+    required this.onInvite,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          AppAvatar(
+            initials: player.initials,
+            size: 42,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  player.name,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.dark,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    if (player.city.isNotEmpty) player.city,
+                    if (player.primarySport.isNotEmpty)
+                      _capitalize(player.primarySport),
+                    if (player.distanceKm != null)
+                      '${player.distanceKm!.toStringAsFixed(1)} km',
+                  ].join(' | '),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10.5,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: isSaving ? null : onInvite,
+            child: Text(
+              isSaving ? 'Sending...' : 'Invite',
+              style: GoogleFonts.dmSans(
+                fontWeight: FontWeight.w700,
+                color: AppColors.green,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InvitationTile extends StatelessWidget {
+  final PlayerInvitationModel invitation;
+  final bool isSaving;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  const _InvitationTile({
+    required this.invitation,
+    required this.isSaving,
+    required this.onAccept,
+    required this.onDecline,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  invitation.senderName.isNotEmpty
+                      ? invitation.senderName
+                      : 'New Invitation',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.dark,
+                  ),
+                ),
+              ),
+              AppBadge(
+                _capitalize(invitation.type),
+                type: BadgeType.amber,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            invitation.message.isNotEmpty
+                ? invitation.message
+                : 'You have a new invitation.',
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              color: AppColors.muted,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton(
+                  label: isSaving ? 'Updating...' : 'Accept',
+                  onTap: isSaving ? null : onAccept,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: AppButton(
+                  label: 'Decline',
+                  isOutline: true,
+                  onTap: isSaving ? null : onDecline,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

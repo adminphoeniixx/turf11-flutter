@@ -11,29 +11,56 @@ class TournamentController extends GetxController {
   final selectedTournamentSummary = Rxn<TournamentTeamsSummary>();
   final selectedTournamentTeamSummary = Rxn<TournamentTeamPlayersSummary>();
   final isLoading = false.obs;
+  final isLoadMoreLoading = false.obs;
   final isTeamsLoading = false.obs;
   final isPlayersLoading = false.obs;
   final errorMessage = ''.obs;
   final teamsErrorMessage = ''.obs;
   final playersErrorMessage = ''.obs;
   final totalTournaments = 0.obs;
+  final currentPage = 1.obs;
+  final lastPage = 1.obs;
 
-  Future<void> loadTournaments() async {
+  bool get hasMoreTournaments => currentPage.value < lastPage.value;
+
+  Future<void> loadTournaments({bool loadMore = false}) async {
     try {
-      isLoading.value = true;
-      errorMessage.value = '';
-      final response = await TournamentService.fetchTournaments();
-      tournaments.assignAll(response.tournaments);
+      final nextPage = loadMore ? currentPage.value + 1 : 1;
+      if (loadMore) {
+        if (isLoadMoreLoading.value || !hasMoreTournaments) {
+          return;
+        }
+        isLoadMoreLoading.value = true;
+      } else {
+        isLoading.value = true;
+        errorMessage.value = '';
+      }
+      final response = await TournamentService.fetchTournaments(page: nextPage);
+      if (loadMore) {
+        tournaments.addAll(response.tournaments);
+      } else {
+        tournaments.assignAll(response.tournaments);
+      }
       totalTournaments.value = response.total;
+      currentPage.value = response.currentPage;
+      lastPage.value = response.lastPage;
     } catch (e) {
-      tournaments.clear();
-      totalTournaments.value = 0;
+      if (!loadMore) {
+        tournaments.clear();
+        totalTournaments.value = 0;
+        currentPage.value = 1;
+        lastPage.value = 1;
+      }
       errorMessage.value = _readableError(e);
       debugPrint(
         '[TournamentController] loadTournaments failed: ${errorMessage.value}',
       );
     } finally {
-      isLoading.value = false;
+      if (loadMore) {
+        isLoadMoreLoading.value = false;
+      } else {
+        isLoading.value = false;
+      }
     }
   }
 

@@ -88,7 +88,7 @@ class _TournamentScreenState extends State<TournamentScreen> {
               child: Obx(() {
                 final tournaments = _tournamentController.tournaments;
                 return RefreshIndicator(
-                  onRefresh: _tournamentController.loadTournaments,
+                  onRefresh: () => _tournamentController.loadTournaments(),
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
                     children: [
@@ -128,6 +128,24 @@ class _TournamentScreenState extends State<TournamentScreen> {
                               context,
                               tournamentId: tournament.id,
                               tournamentName: tournament.name,
+                            ),
+                          ),
+                        ),
+                      if (tournaments.isNotEmpty &&
+                          _tournamentController.hasMoreTournaments)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Obx(
+                            () => AppButton(
+                              label: _tournamentController.isLoadMoreLoading.value
+                                  ? 'Loading...'
+                                  : 'Load More',
+                              isOutline: true,
+                              onTap: _tournamentController.isLoadMoreLoading.value
+                                  ? null
+                                  : () => _tournamentController.loadTournaments(
+                                        loadMore: true,
+                                      ),
                             ),
                           ),
                         ),

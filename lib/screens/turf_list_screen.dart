@@ -130,11 +130,11 @@ class _TurfListScreenState extends State<TurfListScreen> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    SearchBar(
-                      hint: 'Search turf name, area...',
-                      controller: _searchController,
-                      onChanged: (_) => setState(() {}),
-                    ),
+                    // SearchBar(
+                    //   hint: 'Search turf name, area...',
+                    //   controller: _searchController,
+                    //   onChanged: (_) => setState(() {}),
+                    // ),
                     ChipRow(
                       _sports,
                       initial: _sportIndex,
@@ -187,8 +187,7 @@ class _TurfListScreenState extends State<TurfListScreen> {
                                       turfId: turf.id,
                                       turfName: turf.name,
                                       sportType: turf.sportType,
-                                      pricePerHour:
-                                          turf.pricePerHour.toInt(),
+                                      pricePerHour: turf.pricePerHour.toInt(),
                                     ),
                                   ),
                                 ),
@@ -393,7 +392,8 @@ class _TurfListCard extends StatelessWidget {
     final distance = turf.distanceKm != null && turf.distanceKm! > 0
         ? '${turf.distanceKm!.toStringAsFixed(1)} km | '
         : '';
-    final address = turf.address.trim().isNotEmpty ? turf.address : turf.location;
+    final address =
+        turf.address.trim().isNotEmpty ? turf.address : turf.location;
     return '$distance$address';
   }
 

@@ -6,7 +6,9 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../controllers/match_controller.dart';
+import '../controllers/turf_controller.dart';
 import '../data/models/match_model.dart';
+import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 
@@ -186,10 +188,10 @@ class CreateMatchScreen extends StatefulWidget {
 
 class _CreateMatchScreenState extends State<CreateMatchScreen> {
   late final MatchController controller;
+  late final TurfController turfController;
 
   final formKey = GlobalKey<FormState>();
   final titleController = TextEditingController();
-  final cityController = TextEditingController(text: 'Gurugram');
   final dateController = TextEditingController();
   final startTimeController = TextEditingController();
   final endTimeController = TextEditingController();
@@ -200,6 +202,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
   int sportIndex = 0;
   int formatIndex = 0;
   int skillIndex = 0;
+  int? selectedTurfId;
   DateTime? selectedDate;
   TimeOfDay? startTime;
   TimeOfDay? endTime;
@@ -214,12 +217,28 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     controller = Get.isRegistered<MatchController>()
         ? Get.find<MatchController>()
         : Get.put(MatchController());
+    turfController = Get.isRegistered<TurfController>()
+        ? Get.find<TurfController>()
+        : Get.put(TurfController());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (turfController.turfs.isEmpty && !turfController.isLoading.value) {
+        await turfController.loadNearbyTurfs();
+      }
+      if (!mounted) {
+        return;
+      }
+      final turfs = _selectableTurfs;
+      if (selectedTurfId == null && turfs.isNotEmpty) {
+        setState(() {
+          selectedTurfId = turfs.first.id;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     titleController.dispose();
-    cityController.dispose();
     dateController.dispose();
     startTimeController.dispose();
     endTimeController.dispose();
@@ -261,7 +280,14 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                       ChipRow(
                         const ['Cricket', 'Football', 'Badminton'],
                         initial: sportIndex,
-                        onChanged: (value) => sportIndex = value,
+                        onChanged: (value) => setState(() {
+                          sportIndex = value;
+                          final turfs = _selectableTurfs;
+                          if (!turfs.any((turf) => turf.id == selectedTurfId)) {
+                            selectedTurfId =
+                                turfs.isNotEmpty ? turfs.first.id : null;
+                          }
+                        }),
                       ),
                       const SectionLabel('Match Title'),
                       _TextField(
@@ -272,15 +298,86 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                                 ? 'Title is required'
                                 : null,
                       ),
-                      const SectionLabel('City'),
-                      _TextField(
-                        controller: cityController,
-                        hint: 'Gurugram',
-                        validator: (value) =>
-                            value == null || value.trim().isEmpty
-                                ? 'City is required'
-                                : null,
-                      ),
+                      const SectionLabel('Turf'),
+                      Obx(() {
+                        final turfs = _selectableTurfs;
+                        final isLoading = turfController.isLoading.value;
+                        final hasItems = turfs.isNotEmpty;
+                        final currentValue = turfs.any(
+                          (turf) => turf.id == selectedTurfId,
+                        )
+                            ? selectedTurfId
+                            : null;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            DropdownButtonFormField<int>(
+                              value: currentValue,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                hintText: 'Select turf',
+                              ),
+                              items: turfs
+                                  .map(
+                                    (turf) => DropdownMenuItem<int>(
+                                      value: turf.id,
+                                      child: Text(
+                                        turf.name,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: !hasItems
+                                  ? null
+                                  : (value) {
+                                      setState(() {
+                                        selectedTurfId = value;
+                                      });
+                                    },
+                              validator: (value) {
+                                if (isLoading) {
+                                  return null;
+                                }
+                                return value == null
+                                    ? 'Please select a turf'
+                                    : null;
+                              },
+                            ),
+                            if (isLoading) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Loading nearby turfs...',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ] else if (!hasItems) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                turfController.errorMessage.value.isNotEmpty
+                                    ? turfController.errorMessage.value
+                                    : 'No turf available right now.',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: AppColors.red,
+                                ),
+                              ),
+                            ] else ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                _selectedTurfSummary(turfs),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      }),
                       Row(
                         children: [
                           Expanded(
@@ -323,13 +420,13 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                       ChipRow(
                         const ['5v5', '8v8', '11v11'],
                         initial: formatIndex,
-                        onChanged: (value) => formatIndex = value,
+                        onChanged: (value) => setState(() => formatIndex = value),
                       ),
                       const SectionLabel('Skill Level'),
                       ChipRow(
                         const ['All', 'Beginner', 'Intermediate', 'Advanced'],
                         initial: skillIndex,
-                        onChanged: (value) => skillIndex = value,
+                        onChanged: (value) => setState(() => skillIndex = value),
                       ),
                       Row(
                         children: [
@@ -379,7 +476,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                       const SizedBox(height: 18),
                       SmallCard(
                         child: Text(
-                          'Nearby list now uses device GPS when permission is available. If location is denied or unavailable, the app falls back to default coordinates.',
+                          'Match create API now sends the selected turf id. Nearby list still uses fallback coordinates when live location is unavailable.',
                           style: GoogleFonts.dmSans(
                               fontSize: 11,
                               color: AppColors.muted,
@@ -464,12 +561,16 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
       Get.snackbar('Error', 'Date, start time and end time are required.');
       return;
     }
+    if (selectedTurfId == null) {
+      Get.snackbar('Error', 'Please select a turf.');
+      return;
+    }
 
     final payload = {
       'title': titleController.text.trim(),
       'sport': sports[sportIndex],
       'format': formats[formatIndex],
-      'city': cityController.text.trim(),
+      'turf_id': selectedTurfId,
       'date': dateController.text.trim(),
       'time_start': startTimeController.text.trim(),
       'time_end': endTimeController.text.trim(),
@@ -508,6 +609,39 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
       return 'Enter valid fee';
     }
     return null;
+  }
+
+  List<TurfModel> get _selectableTurfs {
+    final activeSport = sports[sportIndex];
+    final matchingTurfs = turfController.turfs
+        .where((turf) => turf.sportType.toLowerCase() == activeSport)
+        .toList();
+    if (matchingTurfs.isNotEmpty) {
+      return matchingTurfs;
+    }
+    return turfController.turfs.toList();
+  }
+
+  String _selectedTurfSummary(List<TurfModel> turfs) {
+    TurfModel? selectedTurf;
+    for (final turf in turfs) {
+      if (turf.id == selectedTurfId) {
+        selectedTurf = turf;
+        break;
+      }
+    }
+    if (selectedTurf == null) {
+      return 'Select a turf to send its id in the API request.';
+    }
+
+    final parts = <String>[
+      if (selectedTurf.city.trim().isNotEmpty) selectedTurf.city,
+      if (selectedTurf.address.trim().isNotEmpty) selectedTurf.address,
+    ];
+    if (parts.isEmpty) {
+      return 'Selected turf id: ${selectedTurf.id}';
+    }
+    return '${parts.join(' | ')}  |  Turf id: ${selectedTurf.id}';
   }
 }
 
