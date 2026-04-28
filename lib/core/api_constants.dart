@@ -15,6 +15,8 @@ class ApiConstants {
   static const matches = "/matches";
   static const nearbyMatches = "/matches/nearby";
   static const myMatches = "/matches/my";
+  static const joinMatchByCode = "/matches/join";
+  static const nearbyPlayers = "/players/nearby";
   static const wallet = "/wallet";
   static const walletTransactions = "/wallet/transactions";
   static const walletTopupOrder = "/wallet/topup";
@@ -28,6 +30,14 @@ class ApiConstants {
   static String matchDetail(dynamic matchId) => "/matches/$matchId";
   static String joinMatch(dynamic matchId) => "/matches/$matchId/join";
   static String leaveMatch(dynamic matchId) => "/matches/$matchId/leave";
+  static String inviteTeamToMatch(dynamic matchId) =>
+      "/matches/$matchId/invite-team";
+  static String invitePlayersToMatch(dynamic matchId) =>
+      "/matches/$matchId/invite-players";
+  static String matchInviteLink(dynamic matchId) => "/matches/$matchId/invite-link";
+  static String removePlayerFromMatch(dynamic matchId, dynamic playerId) =>
+      "/matches/$matchId/remove/$playerId";
+  static String finalizeMatch(dynamic matchId) => "/matches/$matchId/finalize";
   static String turfDetail(dynamic turfId) => "/turfs/$turfId";
   static String turfSlots(dynamic turfId) => "/turfs/$turfId/slots";
   static String cancelBooking(dynamic bookingId) => "/bookings/$bookingId/cancel";

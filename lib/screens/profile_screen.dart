@@ -9,7 +9,6 @@ import '../data/models/profile_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'login_screen.dart';
-import 'my_bookings_screen.dart';
 import 'wallet_razorpay_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -183,11 +182,6 @@ class ProfileScreen extends StatelessWidget {
                               _stat(
                                 '${profile?.totalBookings ?? 0}',
                                 'Bookings',
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const MyBookingsScreen(),
-                                  ),
-                                ),
                               ),
                               _stat(
                                 'Rs ${_formatMoney(profile?.totalSpent ?? 0)}',
@@ -209,16 +203,6 @@ class ProfileScreen extends StatelessWidget {
                                 'Verification',
                                 trailing: const AppBadge('Verified'),
                                 onTap: () {},
-                              ),
-                              const AppDivider(),
-                              _menuItem(
-                                LucideIcons.calendarDays,
-                                'My Bookings',
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const MyBookingsScreen(),
-                                  ),
-                                ),
                               ),
                               const AppDivider(),
                               _menuItem(

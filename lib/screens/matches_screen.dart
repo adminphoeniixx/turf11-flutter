@@ -4,10 +4,13 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../controllers/match_controller.dart';
+import '../controllers/team_controller.dart';
 import '../controllers/turf_controller.dart';
 import '../data/models/match_model.dart';
+import '../data/models/team_model.dart';
 import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
@@ -23,6 +26,7 @@ class JoinMatchScreen extends StatefulWidget {
 
 class _JoinMatchScreenState extends State<JoinMatchScreen> {
   late final MatchController controller;
+  final joinCodeController = TextEditingController();
   late int selectedTab;
 
   @override
@@ -34,6 +38,12 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
     selectedTab = widget.initialTabIndex;
     WidgetsBinding.instance
         .addPostFrameCallback((_) => controller.refreshAll());
+  }
+
+  @override
+  void dispose() {
+    joinCodeController.dispose();
+    super.dispose();
   }
 
   @override
@@ -80,6 +90,51 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                       onChanged: (index) => setState(() => selectedTab = index),
                     ),
                     const SizedBox(height: 10),
+                    if (selectedTab == 0) ...[
+                      SmallCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Join With Invite Code',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.dark,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Got a WhatsApp or SMS invite? Paste the match code here.',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: joinCodeController,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: const InputDecoration(
+                                hintText: 'e.g. MT-AB3X5',
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Obx(
+                              () => AppButton(
+                                label: controller.isJoinLoading.value
+                                    ? 'Joining...'
+                                    : 'Join Match',
+                                onTap: controller.isJoinLoading.value
+                                    ? null
+                                    : _joinByCode,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     Expanded(
                       child: Obx(() {
                         final isLoading = selectedTab == 0
@@ -177,6 +232,18 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
       ),
     );
   }
+
+  Future<void> _joinByCode() async {
+    final code = joinCodeController.text.trim().toUpperCase();
+    if (code.isEmpty) {
+      Get.snackbar('Error', 'Please enter a valid invite code.');
+      return;
+    }
+    final success = await controller.joinMatchWithCode(code);
+    if (success) {
+      joinCodeController.clear();
+    }
+  }
 }
 
 class CreateMatchScreen extends StatefulWidget {
@@ -188,12 +255,13 @@ class CreateMatchScreen extends StatefulWidget {
 
 class _CreateMatchScreenState extends State<CreateMatchScreen> {
   late final MatchController controller;
+  late final TeamController teamController;
   late final TurfController turfController;
 
   final formKey = GlobalKey<FormState>();
   final titleController = TextEditingController();
   final dateController = TextEditingController();
-  final minPlayersController = TextEditingController(text: '6');
+  final minPlayersController = TextEditingController(text: '2');
   final maxPlayersController = TextEditingController(text: '10');
   final descriptionController = TextEditingController();
 
@@ -201,6 +269,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
   int formatIndex = 0;
   int skillIndex = 0;
   int feeModeIndex = 0;
+  int? selectedTeamId;
   int? selectedTurfId;
   DateTime? selectedDate;
   final Set<int> selectedSlotIds = <int>{};
@@ -216,10 +285,18 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     controller = Get.isRegistered<MatchController>()
         ? Get.find<MatchController>()
         : Get.put(MatchController());
+    teamController = Get.isRegistered<TeamController>()
+        ? Get.find<TeamController>()
+        : Get.put(TeamController());
     turfController = Get.isRegistered<TurfController>()
         ? Get.find<TurfController>()
         : Get.put(TurfController());
+    selectedDate = DateTime.now();
+    dateController.text = DateFormat('yyyy-MM-dd').format(selectedDate!);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (teamController.teams.isEmpty && !teamController.isLoading.value) {
+        await teamController.loadTeams();
+      }
       if (turfController.turfs.isEmpty && !turfController.isLoading.value) {
         await turfController.loadNearbyTurfs();
       }
@@ -272,6 +349,10 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                           sportIndex = value;
                           selectedSlotIds.clear();
                           turfController.slots.clear();
+                          final teams = _selectableTeams;
+                          if (!teams.any((team) => team.id == selectedTeamId)) {
+                            selectedTeamId = null;
+                          }
                           final turfs = _selectableTurfs;
                           if (!turfs.any((turf) => turf.id == selectedTurfId)) {
                             selectedTurfId = null;
@@ -388,23 +469,19 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                           ],
                         );
                       }),
-                      const SectionLabel('Date'),
-                      _ReadOnlyField(
-                        controller: dateController,
-                        hint: '2026-04-28',
-                        onTap: _pickDate,
-                      ),
-                      const SectionLabel('Slots'),
+                      const SectionLabel('Invite Team'),
                       Obx(() {
-                        final slots = turfController.slots;
-                        final isLoading = turfController.isSlotsLoading.value;
-                        final error = turfController.slotsErrorMessage.value;
+                        final teams = _selectableTeams;
+                        final isLoading = teamController.isLoading.value;
+                        final selectedName = _selectedTeamName(teams);
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             GestureDetector(
-                              onTap: isLoading ? null : _openSlotPicker,
+                              onTap: isLoading || teams.isEmpty
+                                  ? null
+                                  : () => _openTeamPicker(teams),
                               child: Container(
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(
@@ -412,21 +489,26 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                                   vertical: 15,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.white,
+                                  color: teams.isNotEmpty
+                                      ? AppColors.white
+                                      : AppColors.white.withOpacity(0.7),
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: AppColors.border),
+                                  border: Border.all(
+                                    color: AppColors.border,
+                                  ),
                                 ),
                                 child: Row(
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        _selectedSlotsLabel(slots),
+                                        selectedName ?? 'Skip for now',
+                                        overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.dmSans(
                                           fontSize: 14,
-                                          fontWeight: selectedSlotIds.isEmpty
+                                          fontWeight: selectedName == null
                                               ? FontWeight.w500
                                               : FontWeight.w700,
-                                          color: selectedSlotIds.isEmpty
+                                          color: selectedName == null
                                               ? AppColors.muted2
                                               : AppColors.dark,
                                         ),
@@ -442,34 +524,241 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                                 ),
                               ),
                             ),
-                            if (isLoading) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                'Loading available slots...',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  color: AppColors.muted,
+                            const SizedBox(height: 8),
+                            Text(
+                              _selectedTeamSummary(teams),
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                color: teams.isEmpty && !isLoading
+                                    ? AppColors.red
+                                    : AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                      Text(
+                        'Date',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.dark,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 90,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: 7,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            final date = DateTime.now().add(Duration(days: index));
+                            final isSelected = _isSameDate(date, selectedDate);
+                            return GestureDetector(
+                              onTap: () => _selectDate(date),
+                              child: Container(
+                                width: 66,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? AppColors.dark
+                                      : AppColors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? AppColors.dark
+                                        : AppColors.border,
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      DateFormat('E')
+                                          .format(date)
+                                          .toUpperCase(),
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: isSelected
+                                            ? Colors.white70
+                                            : AppColors.muted,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      DateFormat('dd').format(date),
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : AppColors.dark,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      DateFormat('MMM').format(date),
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 10,
+                                        color: isSelected
+                                            ? Colors.white70
+                                            : AppColors.muted2,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ] else if (error.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                error,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  color: AppColors.red,
-                                ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Time Slots',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.dark,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Tap one or more available slots to create the match.',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Obx(() {
+                        final slots = turfController.slots;
+                        final isLoading = turfController.isSlotsLoading.value;
+                        final error = turfController.slotsErrorMessage.value;
+
+                        if (isLoading) {
+                          return const _CreateMatchSlotsLoadingState();
+                        }
+
+                        if (error.isNotEmpty && slots.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              error,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: AppColors.red,
                               ),
-                            ] else ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                _selectedSlotsSummary(slots),
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  color: AppColors.muted,
-                                ),
+                            ),
+                          );
+                        }
+
+                        if (selectedTurfId == null) {
+                          return Text(
+                            'Select a turf to see slots.',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: AppColors.muted,
+                            ),
+                          );
+                        }
+
+                        if (slots.isEmpty) {
+                          return Text(
+                            'No slots available for this date.',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: AppColors.muted,
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: slots.map((slot) {
+                                final isSelected =
+                                    selectedSlotIds.contains(slot.id);
+                                return GestureDetector(
+                                  onTap: !slot.isAvailable
+                                      ? null
+                                      : () => setState(() {
+                                          if (isSelected) {
+                                            selectedSlotIds.remove(slot.id);
+                                          } else {
+                                            selectedSlotIds.add(slot.id);
+                                          }
+                                        }),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: !slot.isAvailable
+                                          ? AppColors.bg
+                                          : isSelected
+                                              ? AppColors.dark
+                                              : AppColors.white,
+                                      borderRadius: BorderRadius.circular(18),
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? AppColors.dark
+                                            : AppColors.border,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          slot.label,
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: !slot.isAvailable
+                                                ? AppColors.muted2
+                                                : isSelected
+                                                    ? Colors.white
+                                                    : AppColors.dark,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          !slot.isAvailable
+                                              ? 'Unavailable'
+                                              : slot.price > 0
+                                                  ? 'Rs ${_formatAmount(slot.price)}'
+                                                  : 'Available',
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 10,
+                                            color: !slot.isAvailable
+                                                ? AppColors.muted2
+                                                : isSelected
+                                                    ? Colors.white70
+                                                    : AppColors.green,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _selectedSlotsSummary(slots),
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                color: AppColors.muted,
                               ),
-                            ],
+                            ),
                           ],
                         );
                       }),
@@ -539,7 +828,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                       const SizedBox(height: 18),
                       SmallCard(
                         child: Text(
-                          'Create match now uses selected turf, date, slots, min players, max players, and fee mode.',
+                          'Create match now uses selected turf, date, slots, min players, max players, fee mode, and can also invite one team right after match creation.',
                           style: GoogleFonts.dmSans(
                               fontSize: 11,
                               color: AppColors.muted,
@@ -570,18 +859,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     );
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate ?? DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-
-    if (picked == null) {
-      return;
-    }
-
+  Future<void> _selectDate(DateTime picked) async {
     setState(() {
       selectedDate = picked;
       dateController.text = DateFormat('yyyy-MM-dd').format(picked);
@@ -626,7 +904,10 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
       'description': descriptionController.text.trim(),
     };
 
-    final match = await controller.createMatch(payload);
+    final match = await controller.createMatch(
+      payload,
+      invitedTeamId: selectedTeamId,
+    );
     if (match == null || !mounted) {
       return;
     }
@@ -646,6 +927,9 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     if (number == null || number <= 0) {
       return 'Enter valid count';
     }
+    if (number < 2) {
+      return 'Minimum 2 players required';
+    }
     return null;
   }
 
@@ -661,6 +945,20 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     );
   }
 
+  bool _isSameDate(DateTime a, DateTime? b) {
+    if (b == null) {
+      return false;
+    }
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _formatAmount(num value) {
+    final amount = value.toDouble();
+    return amount == amount.roundToDouble()
+        ? amount.toStringAsFixed(0)
+        : amount.toStringAsFixed(2);
+  }
+
   List<TurfModel> get _selectableTurfs {
     final activeSport = sports[sportIndex];
     final matchingTurfs = turfController.turfs
@@ -672,6 +970,26 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     return turfController.turfs.toList();
   }
 
+  List<TeamModel> get _selectableTeams {
+    final activeSport = sports[sportIndex];
+    final matchingTeams = teamController.teams
+        .where((team) => team.sport.toLowerCase() == activeSport)
+        .toList();
+    if (matchingTeams.isNotEmpty) {
+      return matchingTeams;
+    }
+    return teamController.teams.toList();
+  }
+
+  String? _selectedTeamName(List<TeamModel> teams) {
+    for (final team in teams) {
+      if (team.id == selectedTeamId) {
+        return team.name;
+      }
+    }
+    return null;
+  }
+
   String? _selectedTurfName(List<TurfModel> turfs) {
     for (final turf in turfs) {
       if (turf.id == selectedTurfId) {
@@ -679,19 +997,6 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
       }
     }
     return null;
-  }
-
-  String _selectedSlotsLabel(List<TurfSlotModel> slots) {
-    if (selectedTurfId == null) {
-      return 'Select turf first';
-    }
-    if (dateController.text.trim().isEmpty) {
-      return 'Select date first';
-    }
-    if (selectedSlotIds.isEmpty) {
-      return slots.isEmpty ? 'Select slots' : 'Choose slots';
-    }
-    return '${selectedSlotIds.length} slot${selectedSlotIds.length == 1 ? '' : 's'} selected';
   }
 
   String _selectedSlotsSummary(List<TurfSlotModel> slots) {
@@ -731,6 +1036,33 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     if (parts.isEmpty) {
       return 'Turf selected';
     }
+    return parts.join(' | ');
+  }
+
+  String _selectedTeamSummary(List<TeamModel> teams) {
+    if (teamController.isLoading.value) {
+      return 'Loading your teams...';
+    }
+    if (teams.isEmpty) {
+      return 'No teams available to invite yet. You can still create the match without inviting a team.';
+    }
+
+    TeamModel? selectedTeam;
+    for (final team in teams) {
+      if (team.id == selectedTeamId) {
+        selectedTeam = team;
+        break;
+      }
+    }
+    if (selectedTeam == null) {
+      return 'Optional: pick one team to send an invite right after match creation.';
+    }
+
+    final parts = <String>[
+      if (selectedTeam.sport.trim().isNotEmpty) _capitalize(selectedTeam.sport),
+      if (selectedTeam.city.trim().isNotEmpty) selectedTeam.city,
+      '${selectedTeam.playerCount} players',
+    ];
     return parts.join(' | ');
   }
 
@@ -875,193 +1207,168 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     await _loadSlotsIfPossible();
   }
 
-  Future<void> _openSlotPicker() async {
-    if (selectedTurfId == null) {
-      Get.snackbar('Error', 'Please select a turf first.');
-      return;
-    }
-    if (dateController.text.trim().isEmpty) {
-      Get.snackbar('Error', 'Please select a date first.');
-      return;
-    }
-
-    if (turfController.slots.isEmpty && !turfController.isSlotsLoading.value) {
-      await _loadSlotsIfPossible();
-    }
-
-    if (!mounted) {
-      return;
-    }
-
-    final workingSelection = selectedSlotIds.toSet();
-
-    final picked = await showModalBottomSheet<Set<int>>(
+  Future<void> _openTeamPicker(List<TeamModel> teams) async {
+    final picked = await showModalBottomSheet<int?>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final slots = turfController.slots;
-
-            return Container(
-              decoration: const BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 44,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(999),
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Select Slots',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.dark,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        dateController.text.trim(),
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Flexible(
-                        child: turfController.isSlotsLoading.value
-                            ? const Center(child: CircularProgressIndicator())
-                            : slots.isEmpty
-                                ? Center(
-                                    child: Text(
-                                      'No slots available.',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 12,
-                                        color: AppColors.muted,
-                                      ),
-                                    ),
-                                  )
-                                : ListView.separated(
-                                    shrinkWrap: true,
-                                    itemCount: slots.length,
-                                    separatorBuilder: (_, __) =>
-                                        const SizedBox(height: 10),
-                                    itemBuilder: (context, index) {
-                                      final slot = slots[index];
-                                      final isSelected =
-                                          workingSelection.contains(slot.id);
-
-                                      return InkWell(
-                                        borderRadius: BorderRadius.circular(16),
-                                        onTap: !slot.isAvailable
-                                            ? null
-                                            : () {
-                                                setSheetState(() {
-                                                  if (isSelected) {
-                                                    workingSelection.remove(slot.id);
-                                                  } else {
-                                                    workingSelection.add(slot.id);
-                                                  }
-                                                });
-                                              },
-                                        child: Container(
-                                          padding: const EdgeInsets.all(14),
-                                          decoration: BoxDecoration(
-                                            color: isSelected
-                                                ? AppColors.green.withOpacity(0.08)
-                                                : AppColors.bg,
-                                            borderRadius:
-                                                BorderRadius.circular(16),
-                                            border: Border.all(
-                                              color: isSelected
-                                                  ? AppColors.green
-                                                  : AppColors.border,
-                                              width: isSelected ? 1.5 : 1,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      slot.label,
-                                                      style: GoogleFonts.dmSans(
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color: AppColors.dark,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      'Rs ${slot.price}',
-                                                      style: GoogleFonts.dmSans(
-                                                        fontSize: 11,
-                                                        color: AppColors.muted,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Icon(
-                                                isSelected
-                                                    ? Icons.check_circle
-                                                    : Icons.radio_button_unchecked,
-                                                color: isSelected
-                                                    ? AppColors.green
-                                                    : AppColors.muted2,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                      ),
-                      const SizedBox(height: 16),
-                      AppButton(
-                        label: 'Apply Slots',
-                        onTap: () => Navigator.of(context).pop(workingSelection),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Invite Team',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Select one team to invite after the match is created.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Skip invitation',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Create the match without sending a team invite.',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    trailing: Icon(
+                      selectedTeamId == null
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_off,
+                      color: selectedTeamId == null
+                          ? AppColors.green
+                          : AppColors.muted2,
+                    ),
+                    onTap: () => Navigator.of(context).pop(-1),
+                  ),
+                  const SizedBox(height: 8),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: teams.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final team = teams[index];
+                        final isSelected = team.id == selectedTeamId;
+
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => Navigator.of(context).pop(team.id),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.green.withOpacity(0.08)
+                                  : AppColors.bg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.green
+                                    : AppColors.border,
+                                width: isSelected ? 1.5 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        team.name,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.dark,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        [
+                                          _capitalize(team.sport),
+                                          team.city,
+                                          '${team.playerCount} players',
+                                        ].where((part) => part.trim().isNotEmpty).join(' | '),
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 11,
+                                          color: AppColors.muted,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Icon(
+                                  isSelected
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_off,
+                                  color: isSelected
+                                      ? AppColors.green
+                                      : AppColors.muted2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
 
-    if (picked == null || !mounted) {
+    if (!mounted || picked == null) {
       return;
     }
 
     setState(() {
-      selectedSlotIds
-        ..clear()
-        ..addAll(picked);
+      selectedTeamId = picked <= 0 ? null : picked;
     });
   }
 }
@@ -1171,13 +1478,48 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                                   label: 'Sport',
                                   value: _capitalize(match.sport)),
                               InfoRow(label: 'Format', value: match.format),
+                              InfoRow(label: 'Turf', value: match.turfName),
                               InfoRow(label: 'City', value: match.city),
+                              if (match.venueAddress.trim().isNotEmpty)
+                                InfoRow(
+                                  label: 'Venue',
+                                  value: match.venueAddress,
+                                ),
+                              if (match.creatorName.trim().isNotEmpty)
+                                InfoRow(
+                                  label: 'Creator',
+                                  value: match.creatorName,
+                                ),
                               InfoRow(
                                   label: 'Skill level',
                                   value: _capitalize(match.skillLevel)),
+                              if (match.minPlayers > 0)
+                                InfoRow(
+                                  label: 'Min players',
+                                  value: '${match.minPlayers}',
+                                ),
                               InfoRow(
                                   label: 'Fee per player',
                                   value: 'Rs ${match.feePerPlayer}'),
+                              if (match.estimatedFee > 0)
+                                InfoRow(
+                                  label: 'Estimated fee',
+                                  value: 'Rs ${match.estimatedFee}',
+                                ),
+                              if (match.slotTotalCost > 0)
+                                InfoRow(
+                                  label: 'Slot cost',
+                                  value: 'Rs ${match.slotTotalCost}',
+                                ),
+                              InfoRow(
+                                label: 'Fee mode',
+                                value: _capitalize(match.feeMode.replaceAll('_', ' ')),
+                              ),
+                              if (match.inviteCode.trim().isNotEmpty)
+                                InfoRow(
+                                  label: 'Invite code',
+                                  value: match.inviteCode,
+                                ),
                               InfoRow(
                                   label: 'Slots left',
                                   value:
@@ -1195,11 +1537,162 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                             ],
                           ),
                         ),
+                        if (match.isCreator) ...[
+                          const SizedBox(height: 16),
+                          AppCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Creator Actions',
+                                    style: GoogleFonts.dmSans(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.dark)),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Share match invitations, invite nearby players, or finalize the match once teams are locked.',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    color: AppColors.muted,
+                                    height: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                AppButton(
+                                  label: controller.isInviteLinkLoading.value
+                                      ? 'Preparing Link...'
+                                      : 'Share Invite Link',
+                                  isOutline: true,
+                                  onTap: controller.isInviteLinkLoading.value
+                                      ? null
+                                      : () => _shareInviteLink(match.id),
+                                ),
+                                const SizedBox(height: 10),
+                                AppButton(
+                                  label: controller.isInvitePlayersLoading.value
+                                      ? 'Loading Players...'
+                                      : 'Invite Nearby Players',
+                                  isOutline: true,
+                                  onTap: controller.isInvitePlayersLoading.value
+                                      ? null
+                                      : () => _openInvitePlayersSheet(match.id),
+                                ),
+                                const SizedBox(height: 10),
+                                AppButton(
+                                  label: controller.isFinalizeLoading.value
+                                      ? 'Finalizing...'
+                                      : match.canFinalize
+                                          ? 'Finalize Match'
+                                          : 'Finalize Unavailable',
+                                  color: AppColors.dark,
+                                  onTap: controller.isFinalizeLoading.value ||
+                                          !match.canFinalize
+                                      ? null
+                                      : () => _finalizeMatch(match.id),
+                                ),
+                                if (!match.canFinalize) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Finalize will unlock once match rules are satisfied.',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (match.players.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          AppCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Players',
+                                    style: GoogleFonts.dmSans(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.dark)),
+                                const SizedBox(height: 12),
+                                ...match.players.map(
+                                  (player) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: Row(
+                                      children: [
+                                        _PlayerBubble(
+                                          filled: true,
+                                          label: player.initials,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                player.name,
+                                                style: GoogleFonts.dmSans(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.dark,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                [
+                                                  if (player.status.trim().isNotEmpty)
+                                                    _capitalize(player.status),
+                                                  if (player.paymentStatus
+                                                      .trim()
+                                                      .isNotEmpty)
+                                                    _capitalize(
+                                                      player.paymentStatus,
+                                                    ),
+                                                  if (player.feePaid > 0)
+                                                    'Paid Rs ${player.feePaid}',
+                                                ].join(' | '),
+                                                style: GoogleFonts.dmSans(
+                                                  fontSize: 10.5,
+                                                  color: AppColors.muted,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (player.isCreator)
+                                          const AppBadge('Creator')
+                                        else if (match.isCreator)
+                                          TextButton(
+                                            onPressed: () => controller
+                                                .removePlayerFromMatch(
+                                              matchId: match.id,
+                                              playerId: player.id,
+                                            ),
+                                            child: Text(
+                                              'Remove',
+                                              style: GoogleFonts.dmSans(
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.red,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         Obx(() {
-                          final isJoined = controller.isMatchJoined(
-                            widget.matchId,
-                            fallback: widget.initiallyJoined,
-                          );
+                          final isJoined =
+                              match.hasJoined ||
+                              controller.isMatchJoined(
+                                widget.matchId,
+                                fallback: widget.initiallyJoined,
+                              );
                           return AppButton(
                             label: controller.isJoinLoading.value
                                 ? 'Updating...'
@@ -1253,6 +1746,283 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
     }
 
     return DateFormat('dd MMM yyyy').format(parsed);
+  }
+
+  Future<void> _shareInviteLink(int matchId) async {
+    final invite = await controller.loadMatchInviteLink(matchId);
+    if (invite == null) {
+      Get.snackbar('Error', 'Invite link could not be loaded.');
+      return;
+    }
+
+    final message = [
+      if (invite.shareMessage.trim().isNotEmpty) invite.shareMessage.trim(),
+      if (invite.shareMessage.trim().isEmpty && invite.code.trim().isNotEmpty)
+        'Join this match with code: ${invite.code.trim()}',
+      if (invite.inviteLink.trim().isNotEmpty) invite.inviteLink.trim(),
+    ].join('\n\n');
+
+    await SharePlus.instance.share(
+      ShareParams(
+        text: message.isNotEmpty ? message : invite.inviteLink,
+        subject: 'Join this Turf11 match',
+      ),
+    );
+  }
+
+  Future<void> _openInvitePlayersSheet(int matchId) async {
+    await controller.loadNearbyPlayers();
+    if (!mounted) {
+      return;
+    }
+
+    final selectedIds = <int>{};
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                  child: Obx(() {
+                    final players = controller.nearbyPlayers;
+                    final isLoading = controller.isNearbyPlayersLoading.value;
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 44,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: AppColors.border,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Invite Nearby Players',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.dark,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Select players and send them an in-app invite for this match.',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          height: 320,
+                          child: isLoading
+                              ? const Center(
+                                  child: CircularProgressIndicator(),
+                                )
+                              : players.isEmpty
+                                  ? Center(
+                                      child: Text(
+                                        'No nearby players found right now.',
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 12,
+                                          color: AppColors.muted,
+                                        ),
+                                      ),
+                                    )
+                                  : ListView.separated(
+                                      shrinkWrap: true,
+                                      itemCount: players.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(height: 10),
+                                      itemBuilder: (context, index) {
+                                        final player = players[index];
+                                        final isSelected =
+                                            selectedIds.contains(player.id);
+
+                                        return InkWell(
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          onTap: player.id <= 0
+                                              ? null
+                                              : () => setSheetState(() {
+                                                    if (isSelected) {
+                                                      selectedIds.remove(
+                                                        player.id,
+                                                      );
+                                                    } else {
+                                                      selectedIds.add(player.id);
+                                                    }
+                                                  }),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(14),
+                                            decoration: BoxDecoration(
+                                              color: isSelected
+                                                  ? AppColors.green
+                                                      .withOpacity(0.08)
+                                                  : AppColors.bg,
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              border: Border.all(
+                                                color: isSelected
+                                                    ? AppColors.green
+                                                    : AppColors.border,
+                                                width: isSelected ? 1.5 : 1,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                _PlayerBubble(
+                                                  filled: true,
+                                                  label: player.initials,
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        player.name,
+                                                        style:
+                                                            GoogleFonts.dmSans(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color:
+                                                              AppColors.dark,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Text(
+                                                        [
+                                                          if (player.city
+                                                              .trim()
+                                                              .isNotEmpty)
+                                                            player.city.trim(),
+                                                          if (player.sport
+                                                              .trim()
+                                                              .isNotEmpty)
+                                                            _capitalize(
+                                                              player.sport,
+                                                            ),
+                                                          if (player.phone
+                                                              .trim()
+                                                              .isNotEmpty)
+                                                            player.phone.trim(),
+                                                        ].join(' | '),
+                                                        style:
+                                                            GoogleFonts.dmSans(
+                                                          fontSize: 11,
+                                                          color:
+                                                              AppColors.muted,
+                                                          height: 1.4,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Icon(
+                                                  isSelected
+                                                      ? Icons.check_circle
+                                                      : Icons
+                                                          .radio_button_unchecked,
+                                                  color: isSelected
+                                                      ? AppColors.green
+                                                      : AppColors.muted2,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                        ),
+                        const SizedBox(height: 16),
+                        Obx(
+                          () => AppButton(
+                            label: controller.isInvitePlayersLoading.value
+                                ? 'Sending Invites...'
+                                : 'Invite Selected',
+                            onTap: controller.isInvitePlayersLoading.value
+                                ? null
+                                : () async {
+                                    if (selectedIds.isEmpty) {
+                                      Get.snackbar(
+                                        'Error',
+                                        'Please select at least one player.',
+                                      );
+                                      return;
+                                    }
+                                    final success =
+                                        await controller.invitePlayersToMatch(
+                                      matchId: matchId,
+                                      playerIds: selectedIds.toList(),
+                                    );
+                                    if (success && sheetContext.mounted) {
+                                      Navigator.of(sheetContext).pop();
+                                    }
+                                  },
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _finalizeMatch(int matchId) async {
+    final shouldFinalize = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Finalize Match'),
+          content: const Text(
+            'This will lock the match state for players. Do you want to continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Finalize'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldFinalize != true) {
+      return;
+    }
+
+    await controller.finalizeMatch(matchId);
   }
 }
 
@@ -1342,20 +2112,26 @@ class _MatchCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: List.generate(
-                _visibleBubbleCount,
-                (index) => _PlayerBubble(
-                  filled: index < match.joinedPlayers,
-                  label: index < match.joinedPlayers
-                      ? _playerInitials(index)
-                      : '+',
-                ),
+            if (_visiblePlayers.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ..._visiblePlayers.map(
+                    (player) => _PlayerBubble(
+                      filled: true,
+                      label: player.initials,
+                    ),
+                  ),
+                  if (_remainingPlayersCount > 0)
+                    _PlayerBubble(
+                      filled: false,
+                      label: '+$_remainingPlayersCount',
+                    ),
+                ],
               ),
-            ),
+            ],
             const SizedBox(height: 12),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 6),
@@ -1377,11 +2153,13 @@ class _MatchCard extends StatelessWidget {
     );
   }
 
-  int get _visibleBubbleCount {
-    if (match.maxPlayers <= 0) {
-      return 8;
-    }
-    return match.maxPlayers > 8 ? 8 : match.maxPlayers;
+  List<MatchPlayerModel> get _visiblePlayers {
+    return match.activePlayers.take(5).toList();
+  }
+
+  int get _remainingPlayersCount {
+    final remaining = match.activePlayers.length - _visiblePlayers.length;
+    return remaining < 0 ? 0 : remaining;
   }
 
   String _subText() {
@@ -1389,21 +2167,24 @@ class _MatchCard extends StatelessWidget {
     final timeLabel = _timeLabel();
     final slotsLabel = match.isFull ? 'Full' : '${match.slotsLeft} slots left';
     final parts = <String>[
-      dateLabel,
-      timeLabel,
+      if (dateLabel.isNotEmpty) dateLabel,
+      if (timeLabel.isNotEmpty) timeLabel,
+      if (match.turfName.trim().isNotEmpty && match.turfName.trim() != '-')
+        match.turfName.trim(),
       if (match.city.trim().isNotEmpty) match.city.trim(),
       slotsLabel,
+      if (match.inviteCode.trim().isNotEmpty) match.inviteCode.trim(),
     ];
     if (parts.isEmpty) {
       return slotsLabel;
     }
-    return parts.join(' · ');
+    return parts.join(' | ');
   }
 
   String _timeLabel() {
     final rawStart = match.timeStart.trim();
     if (rawStart.isEmpty) {
-      return '--:--';
+      return '';
     }
     if (rawStart.contains('-') || rawStart.contains('–')) {
       return rawStart;
@@ -1419,9 +2200,9 @@ class _MatchCard extends StatelessWidget {
   }
 
   String _relativeDate(String raw) {
-    final parsed = DateTime.tryParse(raw.trim());
+    final parsed = _parseDate(raw.trim());
     if (parsed == null) {
-      return raw.trim().isEmpty ? 'Today' : raw.trim();
+      return raw.trim();
     }
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -1436,6 +2217,24 @@ class _MatchCard extends StatelessWidget {
     return DateFormat('dd MMM').format(parsed);
   }
 
+  DateTime? _parseDate(String raw) {
+    if (raw.isEmpty) {
+      return null;
+    }
+    final direct = DateTime.tryParse(raw);
+    if (direct != null) {
+      return direct;
+    }
+    for (final pattern in const ['MMM d, yyyy', 'MMM dd, yyyy', 'dd MMM yyyy']) {
+      try {
+        return DateFormat(pattern).parseStrict(raw);
+      } catch (_) {
+        continue;
+      }
+    }
+    return null;
+  }
+
   String _displayTime(String raw) {
     final normalized = raw.trim();
     for (final pattern in const ['HH:mm:ss', 'HH:mm', 'H:mm']) {
@@ -1447,11 +2246,6 @@ class _MatchCard extends StatelessWidget {
       }
     }
     return normalized;
-  }
-
-  String _playerInitials(int index) {
-    const pool = ['RS', 'AK', 'MV', 'SK', 'PJ', 'RT', 'NK', 'AD'];
-    return pool[index % pool.length];
   }
 }
 
@@ -1485,6 +2279,26 @@ class _PlayerBubble extends StatelessWidget {
             fontWeight: filled ? FontWeight.w700 : FontWeight.w500,
             color: filled ? AppColors.green : AppColors.muted2,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CreateMatchSlotsLoadingState extends StatelessWidget {
+  const _CreateMatchSlotsLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(
+        6,
+        (_) => const ShimmerBox(
+          width: 110,
+          height: 54,
+          borderRadius: BorderRadius.all(Radius.circular(18)),
         ),
       ),
     );

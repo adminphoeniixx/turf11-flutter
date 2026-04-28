@@ -17,7 +17,7 @@ class AppBottomNav extends StatelessWidget {
     (icon: LucideIcons.home, label: 'Home'),
     (icon: LucideIcons.mapPin, label: 'Turfs'),
     (icon: LucideIcons.trophy, label: 'Leagues'),
-    (icon: LucideIcons.bell, label: 'Alerts'),
+    (icon: LucideIcons.calendarDays, label: 'Bookings'),
     (icon: LucideIcons.user, label: 'Me'),
   ];
 

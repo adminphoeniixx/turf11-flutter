@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 class TurfModel {
   final int id;
   final String name;
@@ -334,6 +336,60 @@ class TurfSlotModel {
     required this.isAvailable,
   });
 
+  bool isExpiredForDate(DateTime selectedDate, {DateTime? now}) {
+    final current = now ?? DateTime.now();
+    final normalizedSelected =
+        DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final normalizedCurrent =
+        DateTime(current.year, current.month, current.day);
+
+    if (normalizedSelected.isBefore(normalizedCurrent)) {
+      return true;
+    }
+    if (normalizedSelected.isAfter(normalizedCurrent)) {
+      return false;
+    }
+
+    final slotStart = startDateTimeOn(selectedDate);
+    if (slotStart == null) {
+      return false;
+    }
+
+    return !slotStart.isAfter(current);
+  }
+
+  DateTime? startDateTimeOn(DateTime selectedDate) {
+    final startText = _extractStartTime(label);
+    if (startText == null) {
+      return null;
+    }
+
+    for (final pattern in const [
+      'HH:mm:ss',
+      'HH:mm',
+      'H:mm',
+      'hh:mm a',
+      'h:mm a',
+      'h a',
+    ]) {
+      try {
+        final parsedTime = DateFormat(pattern).parseStrict(startText);
+        return DateTime(
+          selectedDate.year,
+          selectedDate.month,
+          selectedDate.day,
+          parsedTime.hour,
+          parsedTime.minute,
+          parsedTime.second,
+        );
+      } catch (_) {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
   factory TurfSlotModel.fromJson(Map<String, dynamic> json) {
     final start = _readString(
       json,
@@ -423,5 +479,24 @@ class TurfSlotModel {
       }
     }
     return fallback;
+  }
+
+  static String? _extractStartTime(String label) {
+    final normalized = label.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    for (final separator in const [' - ', '–', '-']) {
+      final parts = normalized.split(separator);
+      if (parts.length >= 2) {
+        final start = parts.first.trim();
+        if (start.isNotEmpty) {
+          return start;
+        }
+      }
+    }
+
+    return normalized;
   }
 }

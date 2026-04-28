@@ -17,7 +17,7 @@ import '../widgets/bottom_nav.dart';
 import '../widgets/shared_widgets.dart';
 import 'booking_screen.dart';
 import 'matches_screen.dart';
-import 'notifications_screen.dart';
+import 'my_bookings_screen.dart';
 import 'profile_screen.dart';
 import 'teams_screen.dart';
 import 'tournament_screen.dart';
@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _HomeContent(),
     TurfListScreen(),
     TournamentScreen(),
-    NotificationsScreen(),
+    MyBookingsScreen(),
     ProfileScreen(),
   ];
 
@@ -466,12 +466,13 @@ class _HomeContent extends StatelessWidget {
                     turf: turf,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => BookingScreen(
-                          turfId: turf.id,
-                          turfName: turf.name,
-                          sportType: turf.sportType,
-                          pricePerHour: turf.pricePerHour.toInt(),
-                        ),
+                        builder: (_) => const CreateMatchScreen(),
+                        // builder: (_) => BookingScreen(
+                        //   turfId: turf.id,
+                        //   turfName: turf.name,
+                        //   sportType: turf.sportType,
+                        //   pricePerHour: turf.pricePerHour.toInt(),
+                        // ),
                       ),
                     ),
                   );

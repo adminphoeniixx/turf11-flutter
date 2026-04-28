@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/api_client.dart';
 import '../../core/api_constants.dart';
+import '../models/match_action_model.dart';
 import '../models/match_model.dart';
 
 class MatchService {
@@ -59,6 +60,155 @@ class MatchService {
     final map = _readMap(res.data);
     debugPrint("[MatchService] createMatch response keys: ${map.keys.toList()}");
     return MatchModel.fromJson(map);
+  }
+
+  static Future<String> inviteTeamToMatch({
+    required int matchId,
+    required int teamId,
+  }) async {
+    if (matchId <= 0) {
+      debugPrint(
+        "[MatchService] inviteTeamToMatch blocked because matchId=$matchId",
+      );
+      throw Exception("Invalid match id detected while inviting a team.");
+    }
+    if (teamId <= 0) {
+      debugPrint(
+        "[MatchService] inviteTeamToMatch blocked because teamId=$teamId",
+      );
+      throw Exception("Invalid team id detected while inviting a team.");
+    }
+
+    debugPrint(
+      "[MatchService] inviteTeamToMatch called for matchId=$matchId, teamId=$teamId",
+    );
+    final res = await ApiClient.post(
+      ApiConstants.inviteTeamToMatch(matchId),
+      data: {
+        "team_id": teamId,
+      },
+    );
+    final message = _readMessage(
+      res.data,
+      fallback: "Team invited successfully.",
+    );
+    debugPrint("[MatchService] inviteTeamToMatch message: $message");
+    return message;
+  }
+
+  static Future<String> joinMatchByCode(String code) async {
+    final normalizedCode = code.trim();
+    if (normalizedCode.isEmpty) {
+      throw Exception("Invite code is required.");
+    }
+    debugPrint("[MatchService] joinMatchByCode called for code=$normalizedCode");
+    final res = await ApiClient.post(
+      ApiConstants.joinMatchByCode,
+      data: {
+        "code": normalizedCode,
+      },
+    );
+    final message = _readMessage(
+      res.data,
+      fallback: "Joined match successfully.",
+    );
+    debugPrint("[MatchService] joinMatchByCode message: $message");
+    return message;
+  }
+
+  static Future<MatchInviteLinkModel> fetchMatchInviteLink(int matchId) async {
+    debugPrint("[MatchService] fetchMatchInviteLink called for matchId=$matchId");
+    final res = await ApiClient.get(ApiConstants.matchInviteLink(matchId));
+    final map = _readMap(res.data);
+    return MatchInviteLinkModel.fromJson(map);
+  }
+
+  static Future<List<NearbyPlayerModel>> fetchNearbyPlayers({
+    required double lat,
+    required double lng,
+    int radius = 10,
+  }) async {
+    debugPrint(
+      "[MatchService] fetchNearbyPlayers called with lat=$lat, lng=$lng, radius=$radius",
+    );
+    final res = await ApiClient.get(
+      ApiConstants.nearbyPlayers,
+      queryParameters: {
+        "lat": lat,
+        "lng": lng,
+        "radius": radius,
+      },
+    );
+    final root = _readMap(res.data);
+    final candidates = [
+      root["data"],
+      root["players"],
+      root["items"],
+      res.data,
+    ];
+
+    for (final candidate in candidates) {
+      if (candidate is List) {
+        return _parseNearbyPlayers(candidate);
+      }
+      if (candidate is Map<String, dynamic>) {
+        final nested = candidate["data"] ?? candidate["players"] ?? candidate["items"];
+        if (nested is List) {
+          return _parseNearbyPlayers(nested);
+        }
+      }
+    }
+
+    return const <NearbyPlayerModel>[];
+  }
+
+  static Future<String> invitePlayersToMatch({
+    required int matchId,
+    required List<int> playerIds,
+  }) async {
+    if (matchId <= 0) {
+      throw Exception("Invalid match id detected while inviting players.");
+    }
+    if (playerIds.isEmpty) {
+      throw Exception("Please select at least one player.");
+    }
+    final res = await ApiClient.post(
+      ApiConstants.invitePlayersToMatch(matchId),
+      data: {
+        "player_ids": playerIds,
+      },
+    );
+    return _readMessage(
+      res.data,
+      fallback: "Players invited successfully.",
+    );
+  }
+
+  static Future<String> removePlayerFromMatch({
+    required int matchId,
+    required int playerId,
+  }) async {
+    if (matchId <= 0 || playerId <= 0) {
+      throw Exception("Invalid match/player id detected while removing player.");
+    }
+    final res = await ApiClient.post(
+      ApiConstants.removePlayerFromMatch(matchId, playerId),
+    );
+    return _readMessage(
+      res.data,
+      fallback: "Player removed successfully.",
+    );
+  }
+
+  static Future<String> finalizeMatch(int matchId) async {
+    if (matchId <= 0) {
+      throw Exception("Invalid match id detected while finalizing match.");
+    }
+    final res = await ApiClient.post(ApiConstants.finalizeMatch(matchId));
+    return _readMessage(
+      res.data,
+      fallback: "Match finalized successfully.",
+    );
   }
 
   static Future<String> joinMatch(int matchId) async {
@@ -137,6 +287,24 @@ class MatchService {
     }
 
     return matches;
+  }
+
+  static List<NearbyPlayerModel> _parseNearbyPlayers(List items) {
+    final players = <NearbyPlayerModel>[];
+
+    for (final item in items) {
+      if (item is! Map) {
+        continue;
+      }
+
+      try {
+        players.add(NearbyPlayerModel.fromJson(Map<String, dynamic>.from(item)));
+      } catch (e) {
+        debugPrint("[MatchService] Failed to parse nearby player item: $e");
+      }
+    }
+
+    return players;
   }
 
   static Map<String, dynamic> _readMap(dynamic data) {

@@ -6,18 +6,31 @@ class MatchModel {
   final String sport;
   final String format;
   final String city;
+  final String turfName;
+  final String venueAddress;
+  final String creatorName;
   final String date;
   final String timeStart;
   final String timeEnd;
+  final int minPlayers;
   final int maxPlayers;
   final int joinedPlayers;
   final int feePerPlayer;
+  final int slotTotalCost;
+  final int estimatedFee;
   final String skillLevel;
+  final String feeMode;
+  final String inviteCode;
   final String description;
   final double? latitude;
   final double? longitude;
   final String status;
   final bool isCreator;
+  final bool canFinalize;
+  final bool hasJoined;
+  final String myStatus;
+  final String myPaymentStatus;
+  final List<MatchPlayerModel> players;
 
   const MatchModel({
     required this.id,
@@ -25,18 +38,31 @@ class MatchModel {
     required this.sport,
     required this.format,
     required this.city,
+    required this.turfName,
+    required this.venueAddress,
+    required this.creatorName,
     required this.date,
     required this.timeStart,
     required this.timeEnd,
+    required this.minPlayers,
     required this.maxPlayers,
     required this.joinedPlayers,
     required this.feePerPlayer,
+    required this.slotTotalCost,
+    required this.estimatedFee,
     required this.skillLevel,
+    required this.feeMode,
+    required this.inviteCode,
     required this.description,
     required this.latitude,
     required this.longitude,
     required this.status,
     required this.isCreator,
+    required this.canFinalize,
+    required this.hasJoined,
+    required this.myStatus,
+    required this.myPaymentStatus,
+    required this.players,
   });
 
   int get slotsLeft {
@@ -53,6 +79,10 @@ class MatchModel {
   }
 
   bool get isFull => slotsLeft == 0;
+
+  List<MatchPlayerModel> get activePlayers {
+    return players.where((player) => !player.hasLeft).toList();
+  }
 
   factory MatchModel.fromJson(Map<String, dynamic> json) {
     final nestedMaps = _collectNestedMaps(json);
@@ -78,10 +108,12 @@ class MatchModel {
     }
 
     final joinedPlayers = _readJoinedPlayers(merged);
+    final parsedPlayers = _readPlayers(merged);
     final maxPlayers =
         _readMaxPlayers(merged) ??
         _readInt(merged, const ["max_players", "total_players", "player_limit"]) ??
         0;
+    final sanitizedJoinedPlayers = joinedPlayers < 0 ? 0 : joinedPlayers;
 
     return MatchModel(
       id: resolvedId,
@@ -93,24 +125,70 @@ class MatchModel {
           fallback: "5v5"),
       city: _readString(merged, const ["city", "location", "venue_city"],
           fallback: "Gurugram"),
+      turfName: _readString(merged, const ["turf_name"], fallback: "-"),
+      venueAddress: _readString(
+        merged,
+        const ["venue_address", "address"],
+        fallback: "",
+      ),
+      creatorName: _readString(
+        merged,
+        const ["creator_name", "created_by_name", "host_name"],
+        fallback: "",
+      ),
       date: _readString(merged, const ["date", "match_date", "scheduled_date"]),
       timeStart:
           _readString(merged, const ["time_start", "start_time", "from_time", "time"]),
       timeEnd: _readString(merged, const ["time_end", "end_time", "to_time"]),
+      minPlayers:
+          _readInt(merged, const ["min_players"]) ??
+          _readInt(_readMap(merged["metadata"]), const ["min_players"]) ??
+          0,
       maxPlayers: maxPlayers,
-      joinedPlayers: joinedPlayers > maxPlayers && maxPlayers > 0
+      joinedPlayers: sanitizedJoinedPlayers > maxPlayers && maxPlayers > 0
           ? maxPlayers
-          : joinedPlayers,
+          : sanitizedJoinedPlayers,
       feePerPlayer:
           _readInt(merged, const ["fee_per_player", "price_per_player", "amount"]) ??
               0,
+      slotTotalCost:
+          _readInt(merged, const ["slot_total_cost"]) ??
+          _readInt(_readMap(merged["metadata"]), const ["slot_total_cost"]) ??
+          0,
+      estimatedFee: _readInt(merged, const ["estimated_fee"]) ?? 0,
       skillLevel: _readString(merged, const ["skill_level", "level"], fallback: "all"),
+      feeMode: _readString(
+        merged,
+        const ["fee_mode"],
+        fallback: _readString(
+          _readMap(merged["metadata"]),
+          const ["fee_mode"],
+          fallback: "split",
+        ),
+      ),
+      inviteCode: _readString(
+        merged,
+        const ["invite_code", "match_code"],
+        fallback: _readString(
+          _readMap(merged["metadata"]),
+          const ["invite_code"],
+          fallback: "",
+        ),
+      ),
       description: _readString(merged, const ["description", "details"]),
       latitude: _readDouble(merged, const ["lat", "latitude"]),
       longitude: _readDouble(merged, const ["lng", "longitude", "long"]),
       status: _readString(merged, const ["status"], fallback: "open"),
       isCreator: _readBool(merged, const ["is_creator", "creator", "created_by_me"]) ??
           false,
+      canFinalize: _readBool(merged, const ["can_finalize"]) ?? false,
+      hasJoined:
+          _readBool(merged, const ["has_joined", "is_joined"]) ??
+          parsedPlayers.any((player) => !player.hasLeft),
+      myStatus: _readString(merged, const ["my_status"], fallback: ""),
+      myPaymentStatus:
+          _readString(merged, const ["my_payment_status"], fallback: ""),
+      players: parsedPlayers,
     );
   }
 
@@ -157,6 +235,25 @@ class MatchModel {
     }
 
     return 0;
+  }
+
+  static List<MatchPlayerModel> _readPlayers(Map<String, dynamic> source) {
+    final candidates = [
+      source["players"],
+      source["participants"],
+      source["members"],
+    ];
+
+    for (final candidate in candidates) {
+      if (candidate is List) {
+        return candidate
+            .whereType<Map>()
+            .map((item) => MatchPlayerModel.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    }
+
+    return const <MatchPlayerModel>[];
   }
 
   static int? _readMaxPlayers(Map<String, dynamic> source) {
@@ -243,6 +340,16 @@ class MatchModel {
     return fallback;
   }
 
+  static Map<String, dynamic> _readMap(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return value;
+    }
+    if (value is Map) {
+      return Map<String, dynamic>.from(value);
+    }
+    return <String, dynamic>{};
+  }
+
   static bool? _readBool(Map<String, dynamic> source, List<String> keys) {
     for (final key in keys) {
       final value = source[key];
@@ -265,6 +372,83 @@ class MatchModel {
 
     return null;
   }
+}
+
+class MatchPlayerModel {
+  final int id;
+  final String name;
+  final String phone;
+  final String status;
+  final String paymentStatus;
+  final int feePaid;
+  final String source;
+  final bool isCreator;
+
+  const MatchPlayerModel({
+    required this.id,
+    required this.name,
+    required this.phone,
+    required this.status,
+    required this.paymentStatus,
+    required this.feePaid,
+    required this.source,
+    required this.isCreator,
+  });
+
+  factory MatchPlayerModel.fromJson(Map<String, dynamic> json) {
+    return MatchPlayerModel(
+      id: MatchModel._readInt(json, const ['player_id', 'id', 'user_id']) ?? 0,
+      name: MatchModel._readString(
+        json,
+        const ['name', 'player_name'],
+        fallback: 'Player',
+      ),
+      phone: MatchModel._readString(
+        json,
+        const ['phone', 'phone_number'],
+        fallback: '',
+      ),
+      status: MatchModel._readString(
+        json,
+        const ['status'],
+        fallback: '',
+      ),
+      paymentStatus: MatchModel._readString(
+        json,
+        const ['payment_status'],
+        fallback: '',
+      ),
+      feePaid: MatchModel._readInt(
+            json,
+            const ['fee_paid'],
+          ) ??
+          0,
+      source: MatchModel._readString(
+        json,
+        const ['source'],
+        fallback: '',
+      ),
+      isCreator:
+          MatchModel._readBool(json, const ['is_creator', 'creator']) ?? false,
+    );
+  }
+
+  String get initials {
+    final parts = name
+        .split(' ')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) {
+      return 'P';
+    }
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
+  bool get hasLeft => status.trim().toLowerCase() == 'left';
 }
 
 class _PlayersSummary {

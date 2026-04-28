@@ -51,7 +51,13 @@ class TurfController extends GetxController {
         turfId: turfId,
         date: date,
       );
-      slots.assignAll(result);
+      final selectedDate = _parseSelectedDate(date);
+      final visibleSlots = selectedDate == null
+          ? result
+          : result
+              .where((slot) => !slot.isExpiredForDate(selectedDate))
+              .toList();
+      slots.assignAll(visibleSlots);
     } catch (e) {
       slots.clear();
       slotsErrorMessage.value = _readableError(e);
@@ -84,5 +90,29 @@ class TurfController extends GetxController {
       return raw.substring('Exception: '.length);
     }
     return raw;
+  }
+
+  DateTime? _parseSelectedDate(String raw) {
+    final normalized = raw.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    final direct = DateTime.tryParse(normalized);
+    if (direct != null) {
+      return direct;
+    }
+
+    final parts = normalized.split('-');
+    if (parts.length == 3) {
+      final year = int.tryParse(parts[0]);
+      final month = int.tryParse(parts[1]);
+      final day = int.tryParse(parts[2]);
+      if (year != null && month != null && day != null) {
+        return DateTime(year, month, day);
+      }
+    }
+
+    return null;
   }
 }
