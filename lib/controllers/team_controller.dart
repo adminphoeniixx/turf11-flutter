@@ -5,25 +5,16 @@ import '../data/models/team_model.dart';
 import '../data/services/team_service.dart';
 
 class TeamController extends GetxController {
-  static const defaultLat = 28.4595;
-  static const defaultLng = 77.0266;
-
   final teams = <TeamModel>[].obs;
-  final nearbyPlayers = <NearbyPlayerModel>[].obs;
-  final invitations = <PlayerInvitationModel>[].obs;
   final selectedTeam = Rxn<TeamModel>();
   final invite = Rxn<TeamInviteModel>();
   final registeringTournamentTeamId = RxnInt();
   final isLoading = false.obs;
   final isDetailLoading = false.obs;
   final isInviteLoading = false.obs;
-  final isNearbyPlayersLoading = false.obs;
-  final isInvitationsLoading = false.obs;
   final isSaving = false.obs;
   final errorMessage = ''.obs;
   final detailErrorMessage = ''.obs;
-  final nearbyPlayersErrorMessage = ''.obs;
-  final invitationsErrorMessage = ''.obs;
 
   Future<void> loadTeams() async {
     try {
@@ -150,81 +141,6 @@ class TeamController extends GetxController {
     } finally {
       isInviteLoading.value = false;
     }
-  }
-
-  Future<void> loadNearbyPlayers({
-    double lat = defaultLat,
-    double lng = defaultLng,
-    int radius = 10,
-  }) async {
-    try {
-      isNearbyPlayersLoading.value = true;
-      nearbyPlayersErrorMessage.value = '';
-      final result = await TeamService.fetchNearbyPlayers(
-        lat: lat,
-        lng: lng,
-        radius: radius,
-      );
-      nearbyPlayers.assignAll(result);
-    } catch (e) {
-      nearbyPlayers.clear();
-      nearbyPlayersErrorMessage.value = _readableError(e);
-      debugPrint(
-        '[TeamController] loadNearbyPlayers failed: ${nearbyPlayersErrorMessage.value}',
-      );
-    } finally {
-      isNearbyPlayersLoading.value = false;
-    }
-  }
-
-  Future<void> loadInvitations() async {
-    try {
-      isInvitationsLoading.value = true;
-      invitationsErrorMessage.value = '';
-      final result = await TeamService.fetchInvitations();
-      invitations.assignAll(result);
-    } catch (e) {
-      invitations.clear();
-      invitationsErrorMessage.value = _readableError(e);
-      debugPrint(
-        '[TeamController] loadInvitations failed: ${invitationsErrorMessage.value}',
-      );
-    } finally {
-      isInvitationsLoading.value = false;
-    }
-  }
-
-  Future<TeamActionResult> invitePlayer({
-    required int playerId,
-    required int referenceId,
-    required String message,
-    String type = 'team',
-  }) async {
-    return _runMutation(() async {
-      return TeamService.invitePlayer(
-        playerId: playerId,
-        type: type,
-        referenceId: referenceId,
-        message: message,
-      );
-    });
-  }
-
-  Future<TeamActionResult> respondToInvitation({
-    required int invitationId,
-    required String response,
-  }) async {
-    return _runMutation(() async {
-      final result = await TeamService.respondToInvitation(
-        invitationId: invitationId,
-        response: response,
-      );
-      await Future.wait([
-        loadInvitations(),
-        loadTeams(),
-      ]);
-      return result;
-    });
   }
 
   Future<TeamTournamentRegistrationResult> registerTeamForTournament({

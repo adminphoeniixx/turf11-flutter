@@ -8,6 +8,7 @@ import '../controllers/match_controller.dart';
 import '../controllers/tournament_controller.dart';
 import '../controllers/turf_controller.dart';
 import '../controllers/wallet_controller.dart';
+import '../data/models/match_model.dart';
 import '../data/models/profile_model.dart';
 import '../data/models/tournament_model.dart';
 import '../data/models/turf_model.dart';
@@ -66,14 +67,6 @@ class _HomeContent extends StatelessWidget {
       return location;
     }
     return 'Your City';
-  }
-
-  String _capitalize(String value) {
-    final normalized = value.trim().toLowerCase();
-    if (normalized.isEmpty) {
-      return '';
-    }
-    return normalized[0].toUpperCase() + normalized.substring(1);
   }
 
   String _formatHomeMatchDate(String value) {
@@ -254,6 +247,7 @@ class _HomeContent extends StatelessWidget {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
+                              // ignore: deprecated_member_use
                               color: Colors.white.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -268,6 +262,7 @@ class _HomeContent extends StatelessWidget {
                                 'Turf11 Wallet',
                                 style: GoogleFonts.dmSans(
                                   fontSize: 10,
+                                  // ignore: deprecated_member_use
                                   color: Colors.white.withOpacity(0.6),
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -512,7 +507,8 @@ class _HomeContent extends StatelessWidget {
                 const SizedBox(height: 10),
                 Obx(() {
                   final matches = matchController.nearbyMatches;
-                  if (matchController.isNearbyLoading.value && matches.isEmpty) {
+                  if (matchController.isNearbyLoading.value &&
+                      matches.isEmpty) {
                     return const _HomeMatchShimmerCard();
                   }
 
@@ -545,25 +541,41 @@ class _HomeContent extends StatelessWidget {
                   final progress = match.fillProgress;
                   final isJoined = matchController.isMatchJoined(match.id);
                   final visibleSlots = match.maxPlayers.clamp(0, 8);
-                  final filledSlots = match.joinedPlayers.clamp(0, visibleSlots);
+                  final filledSlots =
+                      match.joinedPlayers.clamp(0, visibleSlots);
 
-                  return SmallCard(
+                  return Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(26),
+                      border: Border.all(color: AppColors.border),
+                      boxShadow: [
+                        BoxShadow(
+                          // ignore: deprecated_member_use
+                          color: Colors.black.withOpacity(0.06),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${_capitalize(match.sport)} ${match.format} | ${match.city}',
+                                    match.title,
                                     style: GoogleFonts.dmSans(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
                                       color: AppColors.dark,
                                     ),
                                   ),
@@ -578,6 +590,7 @@ class _HomeContent extends StatelessWidget {
                                 ],
                               ),
                             ),
+                            const SizedBox(width: 12),
                             GestureDetector(
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -589,18 +602,18 @@ class _HomeContent extends StatelessWidget {
                               ),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 9,
+                                  horizontal: 20,
+                                  vertical: 11,
                                 ),
                                 decoration: BoxDecoration(
                                   color: AppColors.green,
-                                  borderRadius: BorderRadius.circular(30),
+                                  borderRadius: BorderRadius.circular(26),
                                 ),
                                 child: Text(
                                   isJoined ? 'View' : 'Join',
                                   style: GoogleFonts.dmSans(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
                                     color: Colors.white,
                                   ),
                                 ),
@@ -609,25 +622,56 @@ class _HomeContent extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 14),
-                        Row(
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: List.generate(visibleSlots, (index) {
                             final filled = index < filledSlots;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 7),
-                              child: PlayerDot(
-                                initials: filled
-                                    ? _playerInitialsForIndex(index)
-                                    : null,
-                                filled: filled,
+                            return Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: filled
+                                    ? AppColors.greenLt
+                                    : AppColors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: filled
+                                      ? AppColors.green
+                                      : AppColors.border,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  filled ? _playerInitialsForIndex(index) : '+',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: filled
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: filled
+                                        ? AppColors.green
+                                        : AppColors.muted2,
+                                  ),
+                                ),
                               ),
                             );
                           }),
                         ),
-                        const SizedBox(height: 14),
-                        Center(
-                          child: SizedBox(
-                            width: 360,
-                            child: AppProgress(progress),
+                        const SizedBox(height: 12),
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              minHeight: 6,
+                              value: progress,
+                              backgroundColor: AppColors.border,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppColors.green,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -795,9 +839,9 @@ class _HomeTournamentShimmerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SmallCard(
+    return const SmallCard(
       child: Row(
-        children: const [
+        children: [
           ShimmerBox(
             width: 46,
             height: 46,
@@ -1007,7 +1051,8 @@ class _TurfCard extends StatelessWidget {
     final distance = turf.distanceKm != null && turf.distanceKm! > 0
         ? '${turf.distanceKm!.toStringAsFixed(1)} km | '
         : '';
-    final address = turf.address.trim().isNotEmpty ? turf.address : turf.location;
+    final address =
+        turf.address.trim().isNotEmpty ? turf.address : turf.location;
     return '$distance$address';
   }
 }
@@ -1030,20 +1075,20 @@ class _HomeTurfShimmerCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
+      child: const Column(
         children: [
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-            child: const ShimmerBox(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+            child: ShimmerBox(
               width: double.infinity,
               height: 120,
               borderRadius: BorderRadius.zero,
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12),
             child: Column(
-              children: const [
+              children: [
                 Row(
                   children: [
                     Expanded(
@@ -1097,10 +1142,10 @@ class _HomeMatchShimmerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SmallCard(
+    return const SmallCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Row(
             children: [
               Expanded(

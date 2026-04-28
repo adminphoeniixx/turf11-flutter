@@ -193,23 +193,22 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
   final formKey = GlobalKey<FormState>();
   final titleController = TextEditingController();
   final dateController = TextEditingController();
-  final startTimeController = TextEditingController();
-  final endTimeController = TextEditingController();
+  final minPlayersController = TextEditingController(text: '6');
   final maxPlayersController = TextEditingController(text: '10');
-  final feeController = TextEditingController(text: '200');
   final descriptionController = TextEditingController();
 
   int sportIndex = 0;
   int formatIndex = 0;
   int skillIndex = 0;
+  int feeModeIndex = 0;
   int? selectedTurfId;
   DateTime? selectedDate;
-  TimeOfDay? startTime;
-  TimeOfDay? endTime;
+  final Set<int> selectedSlotIds = <int>{};
 
   static const sports = ['cricket', 'football', 'badminton'];
   static const formats = ['5v5', '8v8', '11v11'];
   static const levels = ['all', 'beginner', 'intermediate', 'advanced'];
+  static const feeModes = ['split', 'host_pays'];
 
   @override
   void initState() {
@@ -224,15 +223,6 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
       if (turfController.turfs.isEmpty && !turfController.isLoading.value) {
         await turfController.loadNearbyTurfs();
       }
-      if (!mounted) {
-        return;
-      }
-      final turfs = _selectableTurfs;
-      if (selectedTurfId == null && turfs.isNotEmpty) {
-        setState(() {
-          selectedTurfId = turfs.first.id;
-        });
-      }
     });
   }
 
@@ -240,10 +230,8 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
   void dispose() {
     titleController.dispose();
     dateController.dispose();
-    startTimeController.dispose();
-    endTimeController.dispose();
+    minPlayersController.dispose();
     maxPlayersController.dispose();
-    feeController.dispose();
     descriptionController.dispose();
     super.dispose();
   }
@@ -282,10 +270,11 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                         initial: sportIndex,
                         onChanged: (value) => setState(() {
                           sportIndex = value;
+                          selectedSlotIds.clear();
+                          turfController.slots.clear();
                           final turfs = _selectableTurfs;
                           if (!turfs.any((turf) => turf.id == selectedTurfId)) {
-                            selectedTurfId =
-                                turfs.isNotEmpty ? turfs.first.id : null;
+                            selectedTurfId = null;
                           }
                         }),
                       ),
@@ -303,48 +292,69 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                         final turfs = _selectableTurfs;
                         final isLoading = turfController.isLoading.value;
                         final hasItems = turfs.isNotEmpty;
-                        final currentValue = turfs.any(
-                          (turf) => turf.id == selectedTurfId,
-                        )
-                            ? selectedTurfId
-                            : null;
+                        final selectedName = _selectedTurfName(turfs);
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            DropdownButtonFormField<int>(
-                              value: currentValue,
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                hintText: 'Select turf',
-                              ),
-                              items: turfs
-                                  .map(
-                                    (turf) => DropdownMenuItem<int>(
-                                      value: turf.id,
+                            GestureDetector(
+                              onTap: !hasItems || isLoading
+                                  ? null
+                                  : () => _openTurfPicker(turfs),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 15,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: hasItems
+                                      ? AppColors.white
+                                      : AppColors.white.withOpacity(0.7),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: AppColors.border,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
                                       child: Text(
-                                        turf.name,
+                                        selectedName ?? 'Select',
                                         overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 14,
+                                          fontWeight: selectedName == null
+                                              ? FontWeight.w500
+                                              : FontWeight.w700,
+                                          color: selectedName == null
+                                              ? AppColors.muted2
+                                              : AppColors.dark,
+                                        ),
                                       ),
                                     ),
-                                  )
-                                  .toList(),
-                              onChanged: !hasItems
-                                  ? null
-                                  : (value) {
-                                      setState(() {
-                                        selectedTurfId = value;
-                                      });
-                                    },
-                              validator: (value) {
-                                if (isLoading) {
-                                  return null;
-                                }
-                                return value == null
-                                    ? 'Please select a turf'
-                                    : null;
-                              },
+                                    const SizedBox(width: 8),
+                                    const Icon(
+                                      LucideIcons.chevronDown,
+                                      size: 18,
+                                      color: AppColors.muted2,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
+                            if (!isLoading &&
+                                selectedTurfId == null &&
+                                hasItems) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Please select a turf',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: AppColors.red,
+                                ),
+                              ),
+                            ],
                             if (isLoading) ...[
                               const SizedBox(height: 8),
                               Text(
@@ -378,44 +388,91 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                           ],
                         );
                       }),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SectionLabel('Date'),
-                                _ReadOnlyField(
-                                  controller: dateController,
-                                  hint: '2026-04-20',
-                                  onTap: _pickDate,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SectionLabel('Start Time'),
-                                _ReadOnlyField(
-                                  controller: startTimeController,
-                                  hint: '18:00',
-                                  onTap: () => _pickTime(isStart: true),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      const SectionLabel('End Time'),
+                      const SectionLabel('Date'),
                       _ReadOnlyField(
-                        controller: endTimeController,
-                        hint: '20:00',
-                        onTap: () => _pickTime(isStart: false),
+                        controller: dateController,
+                        hint: '2026-04-28',
+                        onTap: _pickDate,
                       ),
+                      const SectionLabel('Slots'),
+                      Obx(() {
+                        final slots = turfController.slots;
+                        final isLoading = turfController.isSlotsLoading.value;
+                        final error = turfController.slotsErrorMessage.value;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            GestureDetector(
+                              onTap: isLoading ? null : _openSlotPicker,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 15,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _selectedSlotsLabel(slots),
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 14,
+                                          fontWeight: selectedSlotIds.isEmpty
+                                              ? FontWeight.w500
+                                              : FontWeight.w700,
+                                          color: selectedSlotIds.isEmpty
+                                              ? AppColors.muted2
+                                              : AppColors.dark,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Icon(
+                                      LucideIcons.chevronDown,
+                                      size: 18,
+                                      color: AppColors.muted2,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (isLoading) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'Loading available slots...',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ] else if (error.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                error,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: AppColors.red,
+                                ),
+                              ),
+                            ] else ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                _selectedSlotsSummary(slots),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      }),
                       const SectionLabel('Format'),
                       ChipRow(
                         const ['5v5', '8v8', '11v11'],
@@ -434,10 +491,10 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const SectionLabel('Max Players'),
+                                const SectionLabel('Min Players'),
                                 _TextField(
-                                  controller: maxPlayersController,
-                                  hint: '10',
+                                  controller: minPlayersController,
+                                  hint: '6',
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly
@@ -452,20 +509,26 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const SectionLabel('Fee / Player'),
+                                const SectionLabel('Max Players'),
                                 _TextField(
-                                  controller: feeController,
-                                  hint: '200',
+                                  controller: maxPlayersController,
+                                  hint: '10',
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly
                                   ],
-                                  validator: _validateNonNegativeNumber,
+                                  validator: _validatePositiveNumber,
                                 ),
                               ],
                             ),
                           ),
                         ],
+                      ),
+                      const SectionLabel('Fee Mode'),
+                      ChipRow(
+                        const ['Split', 'Host Pays'],
+                        initial: feeModeIndex,
+                        onChanged: (value) => setState(() => feeModeIndex = value),
                       ),
                       const SectionLabel('Description'),
                       _TextField(
@@ -476,7 +539,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                       const SizedBox(height: 18),
                       SmallCard(
                         child: Text(
-                          'Match create API now sends the selected turf id. Nearby list still uses fallback coordinates when live location is unavailable.',
+                          'Create match now uses selected turf, date, slots, min players, max players, and fee mode.',
                           style: GoogleFonts.dmSans(
                               fontSize: 11,
                               color: AppColors.muted,
@@ -522,47 +585,31 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     setState(() {
       selectedDate = picked;
       dateController.text = DateFormat('yyyy-MM-dd').format(picked);
+      selectedSlotIds.clear();
     });
-  }
-
-  Future<void> _pickTime({required bool isStart}) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: isStart
-          ? (startTime ?? const TimeOfDay(hour: 18, minute: 0))
-          : (endTime ?? const TimeOfDay(hour: 20, minute: 0)),
-    );
-
-    if (picked == null) {
-      return;
-    }
-
-    final date = DateTime(2026, 1, 1, picked.hour, picked.minute);
-    final value = DateFormat('HH:mm').format(date);
-
-    setState(() {
-      if (isStart) {
-        startTime = picked;
-        startTimeController.text = value;
-      } else {
-        endTime = picked;
-        endTimeController.text = value;
-      }
-    });
+    await _loadSlotsIfPossible();
   }
 
   Future<void> _submit() async {
     if (!(formKey.currentState?.validate() ?? false)) {
       return;
     }
-    if (dateController.text.isEmpty ||
-        startTimeController.text.isEmpty ||
-        endTimeController.text.isEmpty) {
-      Get.snackbar('Error', 'Date, start time and end time are required.');
+    if (dateController.text.isEmpty) {
+      Get.snackbar('Error', 'Please select a date.');
       return;
     }
     if (selectedTurfId == null) {
       Get.snackbar('Error', 'Please select a turf.');
+      return;
+    }
+    if (selectedSlotIds.isEmpty) {
+      Get.snackbar('Error', 'Please select at least one slot.');
+      return;
+    }
+    final minPlayers = int.tryParse(minPlayersController.text.trim());
+    final maxPlayers = int.tryParse(maxPlayersController.text.trim());
+    if (minPlayers == null || maxPlayers == null || minPlayers > maxPlayers) {
+      Get.snackbar('Error', 'Min players cannot be greater than max players.');
       return;
     }
 
@@ -571,11 +618,10 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
       'sport': sports[sportIndex],
       'format': formats[formatIndex],
       'turf_id': selectedTurfId,
-      'date': dateController.text.trim(),
-      'time_start': startTimeController.text.trim(),
-      'time_end': endTimeController.text.trim(),
-      'max_players': int.parse(maxPlayersController.text.trim()),
-      'fee_per_player': int.parse(feeController.text.trim()),
+      'slot_ids': selectedSlotIds.toList()..sort(),
+      'min_players': minPlayers,
+      'max_players': maxPlayers,
+      'fee_mode': feeModes[feeModeIndex],
       'skill_level': levels[skillIndex],
       'description': descriptionController.text.trim(),
     };
@@ -603,12 +649,16 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     return null;
   }
 
-  String? _validateNonNegativeNumber(String? value) {
-    final number = int.tryParse(value ?? '');
-    if (number == null || number < 0) {
-      return 'Enter valid fee';
+  Future<void> _loadSlotsIfPossible() async {
+    final turfId = selectedTurfId;
+    final date = dateController.text.trim();
+    if (turfId == null || date.isEmpty) {
+      return;
     }
-    return null;
+    await turfController.loadAvailableSlots(
+      turfId: turfId,
+      date: date,
+    );
   }
 
   List<TurfModel> get _selectableTurfs {
@@ -622,6 +672,46 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     return turfController.turfs.toList();
   }
 
+  String? _selectedTurfName(List<TurfModel> turfs) {
+    for (final turf in turfs) {
+      if (turf.id == selectedTurfId) {
+        return turf.name;
+      }
+    }
+    return null;
+  }
+
+  String _selectedSlotsLabel(List<TurfSlotModel> slots) {
+    if (selectedTurfId == null) {
+      return 'Select turf first';
+    }
+    if (dateController.text.trim().isEmpty) {
+      return 'Select date first';
+    }
+    if (selectedSlotIds.isEmpty) {
+      return slots.isEmpty ? 'Select slots' : 'Choose slots';
+    }
+    return '${selectedSlotIds.length} slot${selectedSlotIds.length == 1 ? '' : 's'} selected';
+  }
+
+  String _selectedSlotsSummary(List<TurfSlotModel> slots) {
+    if (selectedTurfId == null) {
+      return 'Choose a turf to load slots.';
+    }
+    if (dateController.text.trim().isEmpty) {
+      return 'Choose a date to load available slots.';
+    }
+    if (slots.isEmpty) {
+      return 'No slots loaded yet.';
+    }
+    final selected = slots.where((slot) => selectedSlotIds.contains(slot.id)).toList();
+    if (selected.isEmpty) {
+      return '${slots.length} slots available.';
+    }
+    final total = selected.fold<num>(0, (sum, slot) => sum + slot.price);
+    return '${selected.length} selected | Total Rs ${total.toStringAsFixed(total == total.roundToDouble() ? 0 : 2)}';
+  }
+
   String _selectedTurfSummary(List<TurfModel> turfs) {
     TurfModel? selectedTurf;
     for (final turf in turfs) {
@@ -631,7 +721,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
       }
     }
     if (selectedTurf == null) {
-      return 'Select a turf to send its id in the API request.';
+      return 'Select a turf for this match.';
     }
 
     final parts = <String>[
@@ -639,9 +729,340 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
       if (selectedTurf.address.trim().isNotEmpty) selectedTurf.address,
     ];
     if (parts.isEmpty) {
-      return 'Selected turf id: ${selectedTurf.id}';
+      return 'Turf selected';
     }
-    return '${parts.join(' | ')}  |  Turf id: ${selectedTurf.id}';
+    return parts.join(' | ');
+  }
+
+  Future<void> _openTurfPicker(List<TurfModel> turfs) async {
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Select Turf',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Choose a turf for this match.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: turfs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final turf = turfs[index];
+                        final isSelected = turf.id == selectedTurfId;
+                        final locationParts = <String>[
+                          if (turf.city.trim().isNotEmpty) turf.city,
+                          if (turf.address.trim().isNotEmpty) turf.address,
+                        ];
+
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => Navigator.of(context).pop(turf.id),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.green.withOpacity(0.08)
+                                  : AppColors.bg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.green
+                                    : AppColors.border,
+                                width: isSelected ? 1.5 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        turf.name,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.dark,
+                                        ),
+                                      ),
+                                      if (locationParts.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          locationParts.join(' | '),
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 11,
+                                            color: AppColors.muted,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Icon(
+                                  isSelected
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_off,
+                                  color: isSelected
+                                      ? AppColors.green
+                                      : AppColors.muted2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (picked == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      selectedTurfId = picked;
+      selectedSlotIds.clear();
+    });
+    await _loadSlotsIfPossible();
+  }
+
+  Future<void> _openSlotPicker() async {
+    if (selectedTurfId == null) {
+      Get.snackbar('Error', 'Please select a turf first.');
+      return;
+    }
+    if (dateController.text.trim().isEmpty) {
+      Get.snackbar('Error', 'Please select a date first.');
+      return;
+    }
+
+    if (turfController.slots.isEmpty && !turfController.isSlotsLoading.value) {
+      await _loadSlotsIfPossible();
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    final workingSelection = selectedSlotIds.toSet();
+
+    final picked = await showModalBottomSheet<Set<int>>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final slots = turfController.slots;
+
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: AppColors.border,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Select Slots',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        dateController.text.trim(),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Flexible(
+                        child: turfController.isSlotsLoading.value
+                            ? const Center(child: CircularProgressIndicator())
+                            : slots.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      'No slots available.',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: AppColors.muted,
+                                      ),
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    shrinkWrap: true,
+                                    itemCount: slots.length,
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(height: 10),
+                                    itemBuilder: (context, index) {
+                                      final slot = slots[index];
+                                      final isSelected =
+                                          workingSelection.contains(slot.id);
+
+                                      return InkWell(
+                                        borderRadius: BorderRadius.circular(16),
+                                        onTap: !slot.isAvailable
+                                            ? null
+                                            : () {
+                                                setSheetState(() {
+                                                  if (isSelected) {
+                                                    workingSelection.remove(slot.id);
+                                                  } else {
+                                                    workingSelection.add(slot.id);
+                                                  }
+                                                });
+                                              },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? AppColors.green.withOpacity(0.08)
+                                                : AppColors.bg,
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? AppColors.green
+                                                  : AppColors.border,
+                                              width: isSelected ? 1.5 : 1,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      slot.label,
+                                                      style: GoogleFonts.dmSans(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: AppColors.dark,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      'Rs ${slot.price}',
+                                                      style: GoogleFonts.dmSans(
+                                                        fontSize: 11,
+                                                        color: AppColors.muted,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Icon(
+                                                isSelected
+                                                    ? Icons.check_circle
+                                                    : Icons.radio_button_unchecked,
+                                                color: isSelected
+                                                    ? AppColors.green
+                                                    : AppColors.muted2,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                      ),
+                      const SizedBox(height: 16),
+                      AppButton(
+                        label: 'Apply Slots',
+                        onTap: () => Navigator.of(context).pop(workingSelection),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (picked == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      selectedSlotIds
+        ..clear()
+        ..addAll(picked);
+    });
   }
 }
 
@@ -852,8 +1273,24 @@ class _MatchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: AppCard(
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -862,84 +1299,192 @@ class _MatchCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(match.title,
-                          style: GoogleFonts.dmSans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.dark)),
+                      Text(
+                        match.title,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(LucideIcons.mapPin,
-                              size: 10, color: AppColors.muted),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                                '${match.city}  ${match.date}  ${match.timeStart}',
-                                style: GoogleFonts.dmSans(
-                                    fontSize: 10, color: AppColors.muted)),
-                          ),
-                        ],
+                      Text(
+                        _subText(),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: AppColors.muted,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                AppBadge(
-                    match.isFull ? 'Full' : '${match.slotsLeft} slots left',
-                    type: match.isFull ? BadgeType.red : BadgeType.green),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                AppBadge(_capitalize(match.sport), type: BadgeType.amber),
-                const SizedBox(width: 6),
-                AppBadge(match.format, type: BadgeType.dark),
-                const SizedBox(width: 6),
-                AppBadge(_capitalize(match.skillLevel), type: BadgeType.green),
-              ],
-            ),
-            const SizedBox(height: 12),
-            AppProgress(match.fillProgress),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                RichText(
-                  text: TextSpan(children: [
-                    TextSpan(
-                      text: 'Rs ${match.feePerPlayer} ',
-                      style: GoogleFonts.dmSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.green),
-                    ),
-                    TextSpan(
-                      text: 'per player',
-                      style: GoogleFonts.dmSans(
-                          fontSize: 10, color: AppColors.muted),
-                    ),
-                  ]),
-                ),
+                const SizedBox(width: 12),
                 GestureDetector(
                   onTap: onAction,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.green,
-                      borderRadius: BorderRadius.circular(30),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 11,
                     ),
-                    child: Text(actionLabel,
-                        style: GoogleFonts.dmSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white)),
+                    decoration: BoxDecoration(
+                      color: _actionColor(),
+                      borderRadius: BorderRadius.circular(26),
+                    ),
+                    child: Text(
+                      actionLabel,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: List.generate(
+                _visibleBubbleCount,
+                (index) => _PlayerBubble(
+                  filled: index < match.joinedPlayers,
+                  label: index < match.joinedPlayers
+                      ? _playerInitials(index)
+                      : '+',
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  minHeight: 6,
+                  value: match.fillProgress,
+                  backgroundColor: AppColors.border,
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    AppColors.green,
+                  ),
+                ),
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  int get _visibleBubbleCount {
+    if (match.maxPlayers <= 0) {
+      return 8;
+    }
+    return match.maxPlayers > 8 ? 8 : match.maxPlayers;
+  }
+
+  String _subText() {
+    final dateLabel = _relativeDate(match.date);
+    final timeLabel = _timeLabel();
+    final slotsLabel = match.isFull ? 'Full' : '${match.slotsLeft} slots left';
+    final parts = <String>[
+      dateLabel,
+      timeLabel,
+      if (match.city.trim().isNotEmpty) match.city.trim(),
+      slotsLabel,
+    ];
+    if (parts.isEmpty) {
+      return slotsLabel;
+    }
+    return parts.join(' · ');
+  }
+
+  String _timeLabel() {
+    final rawStart = match.timeStart.trim();
+    if (rawStart.isEmpty) {
+      return '--:--';
+    }
+    if (rawStart.contains('-') || rawStart.contains('–')) {
+      return rawStart;
+    }
+    if (match.timeEnd.trim().isNotEmpty) {
+      return '${_displayTime(rawStart)}-${_displayTime(match.timeEnd)}';
+    }
+    return _displayTime(rawStart);
+  }
+
+  Color _actionColor() {
+    return AppColors.green;
+  }
+
+  String _relativeDate(String raw) {
+    final parsed = DateTime.tryParse(raw.trim());
+    if (parsed == null) {
+      return raw.trim().isEmpty ? 'Today' : raw.trim();
+    }
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(parsed.year, parsed.month, parsed.day);
+    final diff = target.difference(today).inDays;
+    if (diff == 0) {
+      return 'Today';
+    }
+    if (diff == 1) {
+      return 'Tomorrow';
+    }
+    return DateFormat('dd MMM').format(parsed);
+  }
+
+  String _displayTime(String raw) {
+    final normalized = raw.trim();
+    for (final pattern in const ['HH:mm:ss', 'HH:mm', 'H:mm']) {
+      try {
+        final parsed = DateFormat(pattern).parseStrict(normalized);
+        return DateFormat('h a').format(parsed);
+      } catch (_) {
+        continue;
+      }
+    }
+    return normalized;
+  }
+
+  String _playerInitials(int index) {
+    const pool = ['RS', 'AK', 'MV', 'SK', 'PJ', 'RT', 'NK', 'AD'];
+    return pool[index % pool.length];
+  }
+}
+
+class _PlayerBubble extends StatelessWidget {
+  final bool filled;
+  final String label;
+
+  const _PlayerBubble({
+    required this.filled,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: filled ? AppColors.greenLt : AppColors.white,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: filled ? AppColors.green : AppColors.border,
+          width: 1.5,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          label,
+          style: GoogleFonts.dmSans(
+            fontSize: 11,
+            fontWeight: filled ? FontWeight.w700 : FontWeight.w500,
+            color: filled ? AppColors.green : AppColors.muted2,
+          ),
         ),
       ),
     );

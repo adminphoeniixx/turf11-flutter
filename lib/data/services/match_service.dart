@@ -102,26 +102,41 @@ class MatchService {
 
     for (final candidate in candidates) {
       if (candidate is List) {
-        return candidate
-            .whereType<Map>()
-            .map((item) => MatchModel.fromJson(Map<String, dynamic>.from(item)))
-            .toList();
+        return _parseMatchItems(candidate);
       }
 
       if (candidate is Map<String, dynamic>) {
         final nestedList =
             candidate["data"] ?? candidate["matches"] ?? candidate["items"];
         if (nestedList is List) {
-          return nestedList
-              .whereType<Map>()
-              .map((item) =>
-                  MatchModel.fromJson(Map<String, dynamic>.from(item)))
-              .toList();
+          return _parseMatchItems(nestedList);
         }
       }
     }
 
     return const <MatchModel>[];
+  }
+
+  static List<MatchModel> _parseMatchItems(List items) {
+    final matches = <MatchModel>[];
+
+    for (final item in items) {
+      if (item is! Map) {
+        debugPrint(
+          "[MatchService] Skipping nearby match item because it is not a map: ${item.runtimeType}",
+        );
+        continue;
+      }
+
+      try {
+        matches.add(MatchModel.fromJson(Map<String, dynamic>.from(item)));
+      } catch (e) {
+        debugPrint("[MatchService] Failed to parse nearby match item: $e");
+        debugPrint("[MatchService] Bad nearby match payload: $item");
+      }
+    }
+
+    return matches;
   }
 
   static Map<String, dynamic> _readMap(dynamic data) {

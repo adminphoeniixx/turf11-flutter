@@ -17,6 +17,7 @@ class MatchModel {
   final double? latitude;
   final double? longitude;
   final String status;
+  final bool isCreator;
 
   const MatchModel({
     required this.id,
@@ -35,6 +36,7 @@ class MatchModel {
     required this.latitude,
     required this.longitude,
     required this.status,
+    required this.isCreator,
   });
 
   int get slotsLeft {
@@ -75,6 +77,12 @@ class MatchModel {
       debugPrint("[MatchModel] Raw payload: $json");
     }
 
+    final joinedPlayers = _readJoinedPlayers(merged);
+    final maxPlayers =
+        _readMaxPlayers(merged) ??
+        _readInt(merged, const ["max_players", "total_players", "player_limit"]) ??
+        0;
+
     return MatchModel(
       id: resolvedId,
       title: _readString(merged, const ["title", "name"],
@@ -87,12 +95,12 @@ class MatchModel {
           fallback: "Gurugram"),
       date: _readString(merged, const ["date", "match_date", "scheduled_date"]),
       timeStart:
-          _readString(merged, const ["time_start", "start_time", "from_time"]),
+          _readString(merged, const ["time_start", "start_time", "from_time", "time"]),
       timeEnd: _readString(merged, const ["time_end", "end_time", "to_time"]),
-      maxPlayers:
-          _readInt(merged, const ["max_players", "total_players", "player_limit"]) ??
-              0,
-      joinedPlayers: _readJoinedPlayers(merged),
+      maxPlayers: maxPlayers,
+      joinedPlayers: joinedPlayers > maxPlayers && maxPlayers > 0
+          ? maxPlayers
+          : joinedPlayers,
       feePerPlayer:
           _readInt(merged, const ["fee_per_player", "price_per_player", "amount"]) ??
               0,
@@ -101,6 +109,8 @@ class MatchModel {
       latitude: _readDouble(merged, const ["lat", "latitude"]),
       longitude: _readDouble(merged, const ["lng", "longitude", "long"]),
       status: _readString(merged, const ["status"], fallback: "open"),
+      isCreator: _readBool(merged, const ["is_creator", "creator", "created_by_me"]) ??
+          false,
     );
   }
 
@@ -136,12 +146,49 @@ class MatchModel {
       return direct;
     }
 
+    final summary = _readPlayersSummary(source);
+    if (summary != null) {
+      return summary.joined;
+    }
+
     final players = source["players"] ?? source["participants"] ?? source["members"];
     if (players is List) {
       return players.length;
     }
 
     return 0;
+  }
+
+  static int? _readMaxPlayers(Map<String, dynamic> source) {
+    final direct = _readInt(
+      source,
+      const ["max_players", "total_players", "player_limit"],
+    );
+    if (direct != null) {
+      return direct;
+    }
+
+    final summary = _readPlayersSummary(source);
+    return summary?.max;
+  }
+
+  static _PlayersSummary? _readPlayersSummary(Map<String, dynamic> source) {
+    final raw = source["players"];
+    if (raw is! String) {
+      return null;
+    }
+    final normalized = raw.trim();
+    final match = RegExp(r'^(\d+)\s*/\s*(\d+)$').firstMatch(normalized);
+    if (match == null) {
+      return null;
+    }
+
+    final joined = int.tryParse(match.group(1) ?? '');
+    final max = int.tryParse(match.group(2) ?? '');
+    if (joined == null || max == null) {
+      return null;
+    }
+    return _PlayersSummary(joined: joined, max: max);
   }
 
   static int? _readInt(Map<String, dynamic> source, List<String> keys) {
@@ -195,4 +242,37 @@ class MatchModel {
 
     return fallback;
   }
+
+  static bool? _readBool(Map<String, dynamic> source, List<String> keys) {
+    for (final key in keys) {
+      final value = source[key];
+      if (value is bool) {
+        return value;
+      }
+      if (value is num) {
+        return value != 0;
+      }
+      if (value is String) {
+        final normalized = value.trim().toLowerCase();
+        if (normalized == 'true' || normalized == '1' || normalized == 'yes') {
+          return true;
+        }
+        if (normalized == 'false' || normalized == '0' || normalized == 'no') {
+          return false;
+        }
+      }
+    }
+
+    return null;
+  }
+}
+
+class _PlayersSummary {
+  final int joined;
+  final int max;
+
+  const _PlayersSummary({
+    required this.joined,
+    required this.max,
+  });
 }

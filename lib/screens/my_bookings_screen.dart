@@ -7,7 +7,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../controllers/booking_controller.dart';
-import '../data/models/booking_create_model.dart';
 import '../data/models/booking_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';

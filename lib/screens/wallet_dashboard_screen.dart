@@ -193,7 +193,7 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
                       ),
                       const SizedBox(height: 14),
                       const SectionLabel('Pay Via'),
-                      ChipRow(['UPI', 'Card', 'Net Banking']),
+                      _paymentMethodCard(),
                       const SizedBox(height: 4),
                       AppButton(
                         label: 'Add ₹${_amounts[_selectedAmt]} to Wallet',
@@ -453,5 +453,72 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
     }
 
     return DateFormat('dd MMM yyyy, h:mm a').format(parsed.toLocal());
+  }
+
+  Widget _paymentMethodCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.green.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              LucideIcons.wallet,
+              color: AppColors.green,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Razorpay',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.dark,
+                  ),
+                ),
+                Text(
+                  'Secure checkout via Razorpay',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.green.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              'Active',
+              style: GoogleFonts.dmSans(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.green,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
