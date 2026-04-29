@@ -355,7 +355,27 @@ class _BookingScreenState extends State<BookingScreen> {
                       isOutline: true,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const CreateMatchScreen(),
+                          builder: (_) => CreateMatchScreen(
+                            initialTurf: TurfModel(
+                              id: widget.turfId,
+                              name: widget.turfName,
+                              format: '',
+                              city: '',
+                              address: '',
+                              location: widget.turfName,
+                              sportType: widget.sportType,
+                              description: '',
+                              maxCapacity: 0,
+                              pricePerHour: widget.pricePerHour,
+                              rating: 0,
+                              totalReviews: 0,
+                              totalBookings: 0,
+                              isAvailable: true,
+                              amenities: const <String>[],
+                              ownerName: '',
+                              ownerBusiness: '',
+                            ),
+                          ),
                         ),
                       ),
                     ),

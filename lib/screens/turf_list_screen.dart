@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide SearchBar;
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:turf11/screens/matches_screen.dart';
 
 import '../controllers/turf_controller.dart';
 import '../data/models/turf_model.dart';
@@ -24,6 +25,7 @@ class TurfListScreen extends StatefulWidget {
 class _TurfListScreenState extends State<TurfListScreen> {
   late final TurfController controller;
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _radiusController = TextEditingController();
   int _sportIndex = 0;
 
   static const _sports = ['All', 'Cricket', 'Football', 'Badminton'];
@@ -34,6 +36,7 @@ class _TurfListScreenState extends State<TurfListScreen> {
     controller = Get.isRegistered<TurfController>()
         ? Get.find<TurfController>()
         : Get.put(TurfController());
+    _radiusController.text = controller.selectedRadiusKm.value.toString();
     WidgetsBinding.instance
         .addPostFrameCallback((_) => controller.loadNearbyTurfs());
   }
@@ -41,6 +44,7 @@ class _TurfListScreenState extends State<TurfListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _radiusController.dispose();
     super.dispose();
   }
 
@@ -81,10 +85,11 @@ class _TurfListScreenState extends State<TurfListScreen> {
                                 controller.turfs,
                                 query,
                               ).length;
+                              final radius = controller.selectedRadiusKm.value;
                               final subtitle =
                                   controller.isUsingFallbackLocation.value
-                                      ? '$count found using fallback location'
-                                      : '$count found near you';
+                                      ? '$count found within $radius km using fallback location'
+                                      : '$count found within $radius km near you';
                               return Text(
                                 subtitle,
                                 style: GoogleFonts.dmSans(
@@ -95,36 +100,41 @@ class _TurfListScreenState extends State<TurfListScreen> {
                             }),
                           ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(
-                              color: AppColors.border,
-                              width: 1.5,
+                        GestureDetector(
+                          onTap: _openRadiusFilter,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 7,
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                LucideIcons.slidersHorizontal,
-                                size: 14,
-                                color: AppColors.dark,
+                            decoration: BoxDecoration(
+                              color: AppColors.white,
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: AppColors.border,
+                                width: 1.5,
                               ),
-                              const SizedBox(width: 5),
-                              Text(
-                                'Filter',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  LucideIcons.slidersHorizontal,
+                                  size: 14,
                                   color: AppColors.dark,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 5),
+                                Obx(() {
+                                  return Text(
+                                    '${controller.selectedRadiusKm.value} km',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.dark,
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -183,12 +193,15 @@ class _TurfListScreenState extends State<TurfListScreen> {
                                 turf: turf,
                                 onTap: () => Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (_) => BookingScreen(
-                                      turfId: turf.id,
-                                      turfName: turf.name,
-                                      sportType: turf.sportType,
-                                      pricePerHour: turf.pricePerHour.toInt(),
+                                    builder: (_) => CreateMatchScreen(
+                                      initialTurf: turf,
                                     ),
+                                    // builder: (_) => BookingScreen(
+                                    //   turfId: turf.id,
+                                    //   turfName: turf.name,
+                                    //   sportType: turf.sportType,
+                                    //   pricePerHour: turf.pricePerHour.toInt(),
+                                    // ),
                                   ),
                                 ),
                               );
@@ -217,6 +230,147 @@ class _TurfListScreenState extends State<TurfListScreen> {
           turf.location.toLowerCase().contains(query);
       return matchesSport && matchesQuery;
     }).toList();
+  }
+
+  Future<void> _openRadiusFilter() async {
+    _radiusController.text = controller.selectedRadiusKm.value.toString();
+    final pickedRadius = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        final quickOptions = <int>[5, 10, 20, 30, 50];
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            int selectedRadius = int.tryParse(_radiusController.text.trim()) ??
+                controller.selectedRadiusKm.value;
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    12,
+                    20,
+                    20 + MediaQuery.of(sheetContext).viewInsets.bottom,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: AppColors.border,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Radius Filter',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Apni nearby turf search range kilometer me set karo.',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: quickOptions.map((option) {
+                          final isSelected = selectedRadius == option;
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(999),
+                            onTap: () {
+                              _radiusController.text = option.toString();
+                              setModalState(() {});
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 9,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppColors.green.withOpacity(0.08)
+                                    : AppColors.bg,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppColors.green
+                                      : AppColors.border,
+                                ),
+                              ),
+                              child: Text(
+                                '$option km',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: isSelected
+                                      ? AppColors.green
+                                      : AppColors.dark,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _radiusController,
+                        keyboardType: TextInputType.number,
+                        onChanged: (_) => setModalState(() {}),
+                        decoration: const InputDecoration(
+                          hintText: 'Enter radius in km',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      AppButton(
+                        label: 'Apply Radius',
+                        onTap: () {
+                          final value =
+                              int.tryParse(_radiusController.text.trim());
+                          if (value == null || value <= 0) {
+                            Get.snackbar(
+                              'Error',
+                              'Please enter a valid radius in km.',
+                            );
+                            return;
+                          }
+                          Navigator.of(sheetContext).pop(value);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (pickedRadius == null) {
+      return;
+    }
+
+    await controller.loadNearbyTurfs(radius: pickedRadius);
   }
 }
 
@@ -370,8 +524,8 @@ class _TurfListCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      _pill('Details', AppColors.white, AppColors.dark),
-                      const SizedBox(width: 6),
+                      // _pill('Details', AppColors.white, AppColors.dark),
+                      // const SizedBox(width: 6),
                       _pill(
                         turf.isAvailable ? 'Book Now' : 'Notify Me',
                         turf.isAvailable ? AppColors.dark : AppColors.white,

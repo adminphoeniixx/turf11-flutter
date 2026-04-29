@@ -27,6 +27,7 @@ class JoinMatchScreen extends StatefulWidget {
 class _JoinMatchScreenState extends State<JoinMatchScreen> {
   late final MatchController controller;
   final joinCodeController = TextEditingController();
+  final matchRadiusController = TextEditingController();
   late int selectedTab;
 
   @override
@@ -36,6 +37,8 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
         ? Get.find<MatchController>()
         : Get.put(MatchController());
     selectedTab = widget.initialTabIndex;
+    matchRadiusController.text =
+        controller.nearbyMatchesRadiusKm.value.toString();
     WidgetsBinding.instance
         .addPostFrameCallback((_) => controller.refreshAll());
   }
@@ -43,6 +46,7 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
   @override
   void dispose() {
     joinCodeController.dispose();
+    matchRadiusController.dispose();
     super.dispose();
   }
 
@@ -72,8 +76,8 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                     Obx(() {
                       final subtitle = selectedTab == 0
                           ? controller.isUsingFallbackLocation.value
-                              ? 'Showing nearby matches using fallback coordinates because device location is unavailable.'
-                              : 'Live matches from the API near your current location.'
+                              ? 'Showing nearby matches within ${controller.nearbyMatchesRadiusKm.value} km using fallback coordinates because device location is unavailable.'
+                              : 'Live matches from the API within ${controller.nearbyMatchesRadiusKm.value} km near your current location.'
                           : 'All matches you have created or joined.';
                       return Text(
                         subtitle,
@@ -91,49 +95,47 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                     ),
                     const SizedBox(height: 10),
                     if (selectedTab == 0) ...[
-                      SmallCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Join With Invite Code',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.dark,
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: _openMatchRadiusFilter,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.white,
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: AppColors.border,
+                                width: 1.5,
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Got a WhatsApp or SMS invite? Paste the match code here.',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 11,
-                                color: AppColors.muted,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  LucideIcons.slidersHorizontal,
+                                  size: 14,
+                                  color: AppColors.dark,
+                                ),
+                                const SizedBox(width: 5),
+                                Obx(() {
+                                  return Text(
+                                    '${controller.nearbyMatchesRadiusKm.value} km',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.dark,
+                                    ),
+                                  );
+                                }),
+                              ],
                             ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: joinCodeController,
-                              textCapitalization: TextCapitalization.characters,
-                              decoration: const InputDecoration(
-                                hintText: 'e.g. MT-AB3X5',
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Obx(
-                              () => AppButton(
-                                label: controller.isJoinLoading.value
-                                    ? 'Joining...'
-                                    : 'Join Match',
-                                onTap: controller.isJoinLoading.value
-                                    ? null
-                                    : _joinByCode,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 10),
                     ],
                     Expanded(
                       child: Obx(() {
@@ -177,6 +179,10 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                                 actionLabel: selectedTab == 0
                                     ? (isJoined ? 'View Details' : 'Join Match')
                                     : 'View Details',
+                                secondaryActionLabel:
+                                    selectedTab == 0 && !isJoined
+                                        ? 'Join Code'
+                                        : null,
                                 onTap: () => _openDetail(
                                       context,
                                       match.id,
@@ -202,6 +208,10 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                                     ),
                                   );
                                 },
+                                onSecondaryAction:
+                                    selectedTab == 0 && !isJoined
+                                        ? () => _openJoinCodeDialog(match)
+                                        : null,
                               );
                             },
                           ),
@@ -244,10 +254,97 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
       joinCodeController.clear();
     }
   }
+
+  Future<void> _openJoinCodeDialog(MatchModel match) async {
+    joinCodeController.clear();
+    final shouldJoin = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            'Join With Code',
+            style: GoogleFonts.dmSans(
+              fontWeight: FontWeight.w800,
+              color: AppColors.dark,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                match.title,
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.dark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Invite code enter karke is match ko join karo.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  color: AppColors.muted,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: joinCodeController,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. MT-AB3X5',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Join'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldJoin != true) {
+      joinCodeController.clear();
+      return;
+    }
+
+    await _joinByCode();
+  }
+
+  Future<void> _openMatchRadiusFilter() async {
+    matchRadiusController.text =
+        controller.nearbyMatchesRadiusKm.value.toString();
+    final pickedRadius = await _showRadiusPickerSheet(
+      title: 'Match Radius',
+      subtitle: 'Nearby match search ke liye radius set karo.',
+      controller: matchRadiusController,
+      initialRadius: controller.nearbyMatchesRadiusKm.value,
+    );
+
+    if (pickedRadius == null) {
+      return;
+    }
+
+    await controller.loadNearbyMatches(radius: pickedRadius);
+  }
 }
 
 class CreateMatchScreen extends StatefulWidget {
-  const CreateMatchScreen({super.key});
+  final TurfModel? initialTurf;
+
+  const CreateMatchScreen({
+    super.key,
+    this.initialTurf,
+  });
 
   @override
   State<CreateMatchScreen> createState() => _CreateMatchScreenState();
@@ -291,6 +388,15 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     turfController = Get.isRegistered<TurfController>()
         ? Get.find<TurfController>()
         : Get.put(TurfController());
+    final initialTurf = widget.initialTurf;
+    if (initialTurf != null) {
+      selectedTurfId = initialTurf.id;
+      final turfSport = initialTurf.sportType.trim().toLowerCase();
+      final initialSportIndex = sports.indexOf(turfSport);
+      if (initialSportIndex >= 0) {
+        sportIndex = initialSportIndex;
+      }
+    }
     selectedDate = DateTime.now();
     dateController.text = DateFormat('yyyy-MM-dd').format(selectedDate!);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -961,13 +1067,19 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
 
   List<TurfModel> get _selectableTurfs {
     final activeSport = sports[sportIndex];
-    final matchingTurfs = turfController.turfs
+    final mergedTurfs = <TurfModel>[
+      if (widget.initialTurf != null) widget.initialTurf!,
+      ...turfController.turfs.where(
+        (turf) => turf.id != widget.initialTurf?.id,
+      ),
+    ];
+    final matchingTurfs = mergedTurfs
         .where((turf) => turf.sportType.toLowerCase() == activeSport)
         .toList();
     if (matchingTurfs.isNotEmpty) {
       return matchingTurfs;
     }
-    return turfController.turfs.toList();
+    return mergedTurfs;
   }
 
   List<TeamModel> get _selectableTeams {
@@ -1389,6 +1501,7 @@ class MatchDetailScreen extends StatefulWidget {
 
 class _MatchDetailScreenState extends State<MatchDetailScreen> {
   late final MatchController controller;
+  final nearbyPlayersRadiusController = TextEditingController();
 
   @override
   void initState() {
@@ -1396,8 +1509,16 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
     controller = Get.isRegistered<MatchController>()
         ? Get.find<MatchController>()
         : Get.put(MatchController());
+    nearbyPlayersRadiusController.text =
+        controller.nearbyPlayersRadiusKm.value.toString();
     WidgetsBinding.instance.addPostFrameCallback(
         (_) => controller.loadMatchDetail(widget.matchId));
+  }
+
+  @override
+  void dispose() {
+    nearbyPlayersRadiusController.dispose();
+    super.dispose();
   }
 
   @override
@@ -1829,6 +1950,60 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                             color: AppColors.muted,
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: () async {
+                            nearbyPlayersRadiusController.text = controller
+                                .nearbyPlayersRadiusKm.value
+                                .toString();
+                            final pickedRadius = await _showRadiusPickerSheet(
+                              title: 'Nearby Players Radius',
+                              subtitle:
+                                  'Invite nearby players ke liye radius set karo.',
+                              controller: nearbyPlayersRadiusController,
+                              initialRadius:
+                                  controller.nearbyPlayersRadiusKm.value,
+                            );
+                            if (pickedRadius == null) {
+                              return;
+                            }
+                            await controller.loadNearbyPlayers(
+                              radius: pickedRadius,
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.bg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  LucideIcons.mapPin,
+                                  size: 14,
+                                  color: AppColors.dark,
+                                ),
+                                const SizedBox(width: 8),
+                                Obx(() {
+                                  return Text(
+                                    'Radius ${controller.nearbyPlayersRadiusKm.value} km',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.dark,
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         SizedBox(
                           height: 320,
@@ -2026,17 +2201,159 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
   }
 }
 
+Future<int?> _showRadiusPickerSheet({
+  required String title,
+  required String subtitle,
+  required TextEditingController controller,
+  required int initialRadius,
+}) async {
+  return showModalBottomSheet<int>(
+    context: Get.context!,
+    backgroundColor: Colors.transparent,
+    isScrollControlled: true,
+    builder: (sheetContext) {
+      final quickOptions = <int>[5, 10, 20, 30, 50];
+      return StatefulBuilder(
+        builder: (context, setModalState) {
+          final selectedRadius =
+              int.tryParse(controller.text.trim()) ?? initialRadius;
+          return Container(
+            decoration: const BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  12,
+                  20,
+                  20 + MediaQuery.of(sheetContext).viewInsets.bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      title,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: quickOptions.map((option) {
+                        final isSelected = selectedRadius == option;
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(999),
+                          onTap: () {
+                            controller.text = option.toString();
+                            setModalState(() {});
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 9,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.green.withOpacity(0.08)
+                                  : AppColors.bg,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.green
+                                    : AppColors.border,
+                              ),
+                            ),
+                            child: Text(
+                              '$option km',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: isSelected
+                                    ? AppColors.green
+                                    : AppColors.dark,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: controller,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => setModalState(() {}),
+                      decoration: const InputDecoration(
+                        hintText: 'Enter radius in km',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    AppButton(
+                      label: 'Apply Radius',
+                      onTap: () {
+                        final value = int.tryParse(controller.text.trim());
+                        if (value == null || value <= 0) {
+                          Get.snackbar(
+                            'Error',
+                            'Please enter a valid radius in km.',
+                          );
+                          return;
+                        }
+                        Navigator.of(sheetContext).pop(value);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 class _MatchCard extends StatelessWidget {
   final MatchModel match;
   final String actionLabel;
+  final String? secondaryActionLabel;
   final VoidCallback onTap;
   final VoidCallback onAction;
+  final VoidCallback? onSecondaryAction;
 
   const _MatchCard({
     required this.match,
     required this.actionLabel,
+    this.secondaryActionLabel,
     required this.onTap,
     required this.onAction,
+    this.onSecondaryAction,
   });
 
   @override
@@ -2112,16 +2429,16 @@ class _MatchCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (_visiblePlayers.isNotEmpty) ...[
+            if (_displayPlayerLabels.isNotEmpty) ...[
               const SizedBox(height: 14),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  ..._visiblePlayers.map(
-                    (player) => _PlayerBubble(
+                  ..._displayPlayerLabels.map(
+                    (label) => _PlayerBubble(
                       filled: true,
-                      label: player.initials,
+                      label: label,
                     ),
                   ),
                   if (_remainingPlayersCount > 0)
@@ -2147,6 +2464,34 @@ class _MatchCard extends StatelessWidget {
                 ),
               ),
             ),
+            if (secondaryActionLabel != null && onSecondaryAction != null) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: onSecondaryAction,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Text(
+                      secondaryActionLabel!,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -2157,8 +2502,13 @@ class _MatchCard extends StatelessWidget {
     return match.activePlayers.take(5).toList();
   }
 
+  List<String> get _displayPlayerLabels {
+    return _visiblePlayers.map((player) => player.initials).toList();
+  }
+
   int get _remainingPlayersCount {
-    final remaining = match.activePlayers.length - _visiblePlayers.length;
+    final totalPlayers = match.activePlayers.length;
+    final remaining = totalPlayers - _displayPlayerLabels.length;
     return remaining < 0 ? 0 : remaining;
   }
 

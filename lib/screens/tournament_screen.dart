@@ -26,6 +26,14 @@ class TournamentScreen extends StatefulWidget {
 class _TournamentScreenState extends State<TournamentScreen> {
   late final TeamController _teamController;
   late final TournamentController _tournamentController;
+  int _statusIndex = 0;
+
+  static const List<String> _statusTabs = <String>[
+    'Open',
+    'Canceled',
+    'Completed',
+    'Ongoing',
+  ];
 
   @override
   void initState() {
@@ -42,7 +50,9 @@ class _TournamentScreenState extends State<TournamentScreen> {
       }
       if (_tournamentController.tournaments.isEmpty &&
           !_tournamentController.isLoading.value) {
-        _tournamentController.loadTournaments();
+        _tournamentController.loadTournaments(
+          status: _apiStatusForIndex(_statusIndex),
+        );
       }
     });
   }
@@ -80,15 +90,26 @@ class _TournamentScreenState extends State<TournamentScreen> {
                 ],
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-              child: ChipRow(['Open', 'My Team', 'Completed']),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              child: ChipRow(
+                _statusTabs,
+                initial: _statusIndex,
+                onChanged: (index) {
+                  setState(() => _statusIndex = index);
+                  _tournamentController.loadTournaments(
+                    status: _apiStatusForIndex(index),
+                  );
+                },
+              ),
             ),
             Expanded(
               child: Obx(() {
                 final tournaments = _tournamentController.tournaments;
                 return RefreshIndicator(
-                  onRefresh: () => _tournamentController.loadTournaments(),
+                  onRefresh: () => _tournamentController.loadTournaments(
+                    status: _apiStatusForIndex(_statusIndex),
+                  ),
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
                     children: [
@@ -129,6 +150,7 @@ class _TournamentScreenState extends State<TournamentScreen> {
                               tournamentId: tournament.id,
                               tournamentName: tournament.name,
                             ),
+                            onDetails: () => _openTournamentDetails(tournament),
                           ),
                         ),
                       if (tournaments.isNotEmpty &&
@@ -145,6 +167,7 @@ class _TournamentScreenState extends State<TournamentScreen> {
                                   ? null
                                   : () => _tournamentController.loadTournaments(
                                         loadMore: true,
+                                        status: _apiStatusForIndex(_statusIndex),
                                       ),
                             ),
                           ),
@@ -160,6 +183,34 @@ class _TournamentScreenState extends State<TournamentScreen> {
     );
   }
 
+  String _apiStatusForIndex(int index) {
+    switch (_statusTabs[index].toLowerCase()) {
+      case 'open':
+        return 'open';
+      case 'canceled':
+        return 'cancelled';
+      case 'completed':
+        return 'completed';
+      case 'ongoing':
+        return 'ongoing';
+      default:
+        return 'open';
+    }
+  }
+
+  void _openTournamentDetails(TournamentModel tournament) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (_) => TournamentDetailScreen(
+              tournamentId: tournament.id,
+              tournamentName: tournament.name,
+              fallbackTournament: tournament,
+            ),
+      ),
+    );
+  }
+
   Future<void> _showRegisterSheet(
     BuildContext context, {
     required int tournamentId,
@@ -168,6 +219,12 @@ class _TournamentScreenState extends State<TournamentScreen> {
     if (_teamController.teams.isEmpty && !_teamController.isLoading.value) {
       await _teamController.loadTeams();
     }
+
+    if (!mounted) {
+      return;
+    }
+
+    await _tournamentController.loadTournamentTeams(tournamentId);
 
     if (!mounted) {
       return;
@@ -200,7 +257,9 @@ class _TournamentScreenState extends State<TournamentScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      if (_teamController.isLoading.value && teams.isEmpty)
+                      if ((_teamController.isLoading.value && teams.isEmpty) ||
+                          (_tournamentController.isTeamsLoading.value &&
+                              _tournamentController.registeredTeams.isEmpty))
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 20),
                           child: Center(child: CircularProgressIndicator()),
@@ -230,10 +289,14 @@ class _TournamentScreenState extends State<TournamentScreen> {
                       ...teams.map(
                         (team) => _TournamentTeamTile(
                           team: team,
+                          isSelected: _isAlreadyRegisteredTeam(team),
                           isLoading:
                               _teamController.registeringTournamentTeamId.value ==
                                   team.id,
                           onTap: () async {
+                            if (_isAlreadyRegisteredTeam(team)) {
+                              return;
+                            }
                             final result = await _teamController
                                 .registerTeamForTournament(
                                 tournamentId: tournamentId,
@@ -254,15 +317,28 @@ class _TournamentScreenState extends State<TournamentScreen> {
           );
         });
   }
+
+  bool _isAlreadyRegisteredTeam(TeamModel team) {
+    final normalizedTeamName = team.name.trim().toLowerCase();
+    return _tournamentController.registeredTeams.any((registeredTeam) {
+      final samePlayerTeamId = registeredTeam.playerTeamId != null &&
+          registeredTeam.playerTeamId == team.id;
+      final sameName =
+          registeredTeam.teamName.trim().toLowerCase() == normalizedTeamName;
+      return samePlayerTeamId || sameName;
+    });
+  }
 }
 
 class _TournamentCard extends StatelessWidget {
   final TournamentModel tournament;
   final VoidCallback onRegister;
+  final VoidCallback onDetails;
 
   const _TournamentCard({
     required this.tournament,
     required this.onRegister,
+    required this.onDetails,
   });
 
   @override
@@ -368,35 +444,44 @@ class _TournamentCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 AppProgress(tournament.registrationProgress),
                 const SizedBox(height: 12),
+                AppButton(
+                  label: tournament.isFull ? 'Tournament Full' : 'Register Team',
+                  trailingIcon: tournament.isFull ? null : Icons.arrow_forward,
+                  color: tournament.isFull ? AppColors.muted2 : null,
+                  onTap: tournament.isFull ? null : onRegister,
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
                       child: AppButton(
-                        label: tournament.isFull ? 'Tournament Full' : 'Register Team',
-                        trailingIcon:
-                            tournament.isFull ? null : Icons.arrow_forward,
-                        color: tournament.isFull ? AppColors.muted2 : null,
-                        onTap: tournament.isFull
-                            ? null
-                            : onRegister,
+                        label: 'Details',
+                        isOutline: true,
+                        onTap: onDetails,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: AppButton(
-                        label: 'Teams',
+                        label: 'Rewards',
                         isOutline: true,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => TournamentTeamsScreen(
-                              tournamentId: tournament.id,
-                              tournamentName: tournament.name,
-                            ),
-                          ),
-                        ),
+                        onTap: () => _showRewardsSheet(context),
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                AppButton(
+                  label: 'Teams',
+                  isOutline: true,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => TournamentTeamsScreen(
+                        tournamentId: tournament.id,
+                        tournamentName: tournament.name,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -430,6 +515,122 @@ class _TournamentCard extends StatelessWidget {
     }
   }
 
+  Future<void> _showRewardsSheet(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '${tournament.name} Rewards',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Tournament prize breakup yahan show ho raha hai.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _rewardTile('1st Prize', tournament.prizes.first),
+                  const SizedBox(height: 10),
+                  _rewardTile('2nd Prize', tournament.prizes.second),
+                  const SizedBox(height: 10),
+                  _rewardTile('3rd Prize', tournament.prizes.third),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _rewardTile(String label, num amount) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.greenLt,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              LucideIcons.indianRupee,
+              color: AppColors.green,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.dmSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark,
+              ),
+            ),
+          ),
+          Text(
+            amount > 0 ? 'Rs ${_formatAmount(amount)}' : 'TBA',
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: AppColors.green,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatAmount(num value) {
+    final amount = value.toDouble();
+    return amount == amount.roundToDouble()
+        ? amount.toStringAsFixed(0)
+        : amount.toStringAsFixed(2);
+  }
+
   Widget _stat(String value, String label) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -459,6 +660,458 @@ class _TournamentCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class TournamentDetailScreen extends StatefulWidget {
+  final int tournamentId;
+  final String tournamentName;
+  final TournamentModel fallbackTournament;
+
+  const TournamentDetailScreen({
+    super.key,
+    required this.tournamentId,
+    required this.tournamentName,
+    required this.fallbackTournament,
+  });
+
+  @override
+  State<TournamentDetailScreen> createState() => _TournamentDetailScreenState();
+}
+
+class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
+  late final TournamentController _tournamentController;
+  late final TeamController _teamController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tournamentController = Get.isRegistered<TournamentController>()
+        ? Get.find<TournamentController>()
+        : Get.put(TournamentController());
+    _teamController = Get.isRegistered<TeamController>()
+        ? Get.find<TeamController>()
+        : Get.put(TeamController());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _tournamentController.loadTournamentDetail(widget.tournamentId);
+      _tournamentController.loadTournamentTeams(widget.tournamentId);
+      if (_teamController.teams.isEmpty && !_teamController.isLoading.value) {
+        _teamController.loadTeams();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            BackRow(
+              label: 'Tournament Detail',
+              onBack: () => Navigator.pop(context),
+            ),
+            Expanded(
+              child: Obx(() {
+                final detail =
+                    _tournamentController.selectedTournamentDetail.value ??
+                    TournamentDetailModel.fromTournament(
+                      widget.fallbackTournament,
+                      teams: _tournamentController.registeredTeams,
+                    );
+                final teams =
+                    detail.teams.isNotEmpty
+                        ? detail.teams
+                        : _tournamentController.registeredTeams;
+                final isLoading =
+                    _tournamentController.isDetailLoading.value &&
+                    detail.description.isEmpty &&
+                    detail.schedule.isEmpty &&
+                    teams.isEmpty;
+
+                if (isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                return RefreshIndicator(
+                  color: AppColors.green,
+                  onRefresh: () async {
+                    await _tournamentController.loadTournamentDetail(
+                      widget.tournamentId,
+                    );
+                    await _tournamentController.loadTournamentTeams(
+                      widget.tournamentId,
+                    );
+                  },
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 90),
+                    children: [
+                      _TournamentDetailHero(detail: detail),
+                      if (_tournamentController.detailErrorMessage.value.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: SmallCard(
+                            child: Text(
+                              _tournamentController.detailErrorMessage.value,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 12,
+                                color: AppColors.red,
+                              ),
+                            ),
+                          ),
+                        ),
+                      const SectionLabel('Overview'),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _detailStat('Entry', detail.entryFeeLabel),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _detailStat(
+                              'Teams',
+                              '${detail.registeredTeams}/${detail.maxTeams}',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(child: _detailStat('Sport', detail.sport)),
+                          const SizedBox(width: 10),
+                          Expanded(child: _detailStat('City', detail.city)),
+                        ],
+                      ),
+                      if (detail.description.trim().isNotEmpty) ...[
+                        const SectionLabel('About'),
+                        SmallCard(
+                          child: Text(
+                            detail.description,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              height: 1.6,
+                              color: AppColors.dark,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SectionLabel('Schedule'),
+                      if (detail.schedule.isEmpty)
+                        SmallCard(
+                          child: Text(
+                            'Schedule will be updated soon.',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: AppColors.muted,
+                            ),
+                          ),
+                        )
+                      else
+                        ...detail.schedule.map(_scheduleTile),
+                      const SectionLabel('Terms'),
+                      if (detail.terms.isEmpty)
+                        SmallCard(
+                          child: Text(
+                            'Terms and rules will be updated soon.',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: AppColors.muted,
+                            ),
+                          ),
+                        )
+                      else
+                        SmallCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children:
+                                detail.terms
+                                    .map((term) => _termRow(term))
+                                    .toList(),
+                          ),
+                        ),
+                      const SectionLabel('Teams'),
+                      if (_tournamentController.isTeamsLoading.value && teams.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (teams.isEmpty)
+                        SmallCard(
+                          child: Text(
+                            'No teams registered yet.',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: AppColors.muted,
+                            ),
+                          ),
+                        )
+                      else ...[
+                        ...teams.take(4).map(
+                          (team) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _RegisteredTeamCard(
+                              team: team,
+                              isMyTeam: _isMyTeam(team, _teamController.teams),
+                              onViewPlayers:
+                                  () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder:
+                                          (_) => TournamentTeamPlayersScreen(
+                                            tournamentId: widget.tournamentId,
+                                            teamId: team.id,
+                                            teamName: team.teamName,
+                                          ),
+                                    ),
+                                  ),
+                            ),
+                          ),
+                        ),
+                        AppButton(
+                          label: 'View All Teams',
+                          isOutline: true,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => TournamentTeamsScreen(
+                                    tournamentId: widget.tournamentId,
+                                    tournamentName: widget.tournamentName,
+                                  ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailStat(String label, String value) {
+    return SmallCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              color: AppColors.muted,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: AppColors.dark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _scheduleTile(TournamentScheduleItem item) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SmallCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item.title,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                ),
+                if (item.status.trim().isNotEmpty)
+                  AppBadge(_labelize(item.status), type: BadgeType.dark),
+              ],
+            ),
+            if (item.subtitle.trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                item.subtitle,
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+            if (item.metaLine.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                item.metaLine,
+                style: GoogleFonts.dmSans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.green,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _termRow(String term) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Icon(
+              LucideIcons.checkCircle2,
+              size: 14,
+              color: AppColors.green,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              term,
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                height: 1.5,
+                color: AppColors.dark,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _isMyTeam(
+    TournamentRegisteredTeamModel team,
+    List<TeamModel> myTeams,
+  ) {
+    final tournamentName = team.teamName.trim().toLowerCase();
+    return myTeams.any(
+      (myTeam) => myTeam.name.trim().toLowerCase() == tournamentName,
+    );
+  }
+
+  String _labelize(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return '-';
+    }
+    return normalized
+        .split('_')
+        .map((part) => part.isEmpty ? part : part[0].toUpperCase() + part.substring(1))
+        .join(' ');
+  }
+}
+
+class _TournamentDetailHero extends StatelessWidget {
+  final TournamentDetailModel detail;
+
+  const _TournamentDetailHero({
+    required this.detail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2C3E20), Color(0xFF3D6B35)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  LucideIcons.trophy,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      detail.name,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      detail.dateLabel,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.76),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      detail.locationLabel,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 11,
+                        color: Colors.white.withOpacity(0.74),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          AppBadge(detail.statusLabel, type: _badgeType(detail.status)),
+        ],
+      ),
+    );
+  }
+
+  BadgeType _badgeType(String status) {
+    switch (status.trim().toLowerCase()) {
+      case 'ongoing':
+        return BadgeType.green;
+      case 'completed':
+        return BadgeType.dark;
+      case 'cancelled':
+      case 'canceled':
+        return BadgeType.red;
+      default:
+        return BadgeType.amber;
+    }
   }
 }
 
@@ -595,6 +1248,23 @@ class _TournamentTeamsScreenState extends State<TournamentTeamsScreen> {
       return aMine ? -1 : 1;
     });
     return sorted;
+  }
+
+  List<TeamModel> _availableTeamsForTournament(List<TeamModel> teams) {
+    return teams
+        .where((team) => !_isAlreadyRegisteredTeam(team))
+        .toList(growable: false);
+  }
+
+  bool _isAlreadyRegisteredTeam(TeamModel team) {
+    final normalizedTeamName = team.name.trim().toLowerCase();
+    return _tournamentController.registeredTeams.any((registeredTeam) {
+      final samePlayerTeamId = registeredTeam.playerTeamId != null &&
+          registeredTeam.playerTeamId == team.id;
+      final sameName =
+          registeredTeam.teamName.trim().toLowerCase() == normalizedTeamName;
+      return samePlayerTeamId || sameName;
+    });
   }
 
   bool _isMyTeam(
@@ -789,19 +1459,23 @@ class _RegisteredTeamCard extends StatelessWidget {
                 icon: LucideIcons.users,
                 label: '${team.playersCount} players',
               ),
-              _TeamInfoPill(
-                icon: LucideIcons.wallet,
-                label: '${team.paymentLabel} | ${team.entryFeePaidLabel}',
-              ),
+              // _TeamInfoPill(
+              //   icon: LucideIcons.wallet,
+              //   label: 'Payment: ${team.paymentLabel}',
+              // ),
+              // _TeamInfoPill(
+              //   icon: LucideIcons.indianRupee,
+              //   label: 'Paid: ${team.entryFeePaidLabel}',
+              // ),
+              // if (team.captainPhone.trim().isNotEmpty)
+              //   _TeamInfoPill(
+              //     icon: LucideIcons.phone,
+              //     label: 'Phone: ${team.captainPhone}',
+              //   ),
               _TeamInfoPill(
                 icon: LucideIcons.clock3,
                 label: team.registeredAt,
               ),
-              if (team.captainPhone.trim().isNotEmpty)
-                _TeamInfoPill(
-                  icon: LucideIcons.phone,
-                  label: team.captainPhone,
-                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -1041,7 +1715,6 @@ class _TournamentPlayerCard extends StatelessWidget {
                     Text(
                       [
                         if (player.city.trim().isNotEmpty) player.city,
-                        if (player.phone.trim().isNotEmpty) player.phone,
                       ].join(' | '),
                       style: GoogleFonts.dmSans(
                         fontSize: 10.5,
@@ -1054,16 +1727,6 @@ class _TournamentPlayerCard extends StatelessWidget {
               if (player.isCaptain) const AppBadge('Captain'),
             ],
           ),
-          if (player.email.trim().isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              player.email,
-              style: GoogleFonts.dmSans(
-                fontSize: 11,
-                color: AppColors.muted,
-              ),
-            ),
-          ],
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -1138,8 +1801,8 @@ class _TournamentCardShimmer extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        children: const [
+      child: const Column(
+        children: [
           Padding(
             padding: EdgeInsets.all(18),
             child: Column(
@@ -1213,11 +1876,13 @@ class _TournamentCardShimmer extends StatelessWidget {
 
 class _TournamentTeamTile extends StatelessWidget {
   final TeamModel team;
+  final bool isSelected;
   final bool isLoading;
   final VoidCallback onTap;
 
   const _TournamentTeamTile({
     required this.team,
+    required this.isSelected,
     required this.isLoading,
     required this.onTap,
   });
@@ -1266,8 +1931,13 @@ class _TournamentTeamTile extends StatelessWidget {
           SizedBox(
             width: 110,
             child: AppButton(
-              label: isLoading ? 'Please wait' : 'Select',
-              onTap: isLoading ? null : onTap,
+              label: isSelected
+                  ? 'Selected'
+                  : isLoading
+                      ? 'Please wait'
+                      : 'Select',
+              color: isSelected ? AppColors.muted2 : null,
+              onTap: isSelected || isLoading ? null : onTap,
             ),
           ),
         ],

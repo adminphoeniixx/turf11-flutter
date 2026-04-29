@@ -109,6 +109,11 @@ class MatchModel {
 
     final joinedPlayers = _readJoinedPlayers(merged);
     final parsedPlayers = _readPlayers(merged);
+    if (joinedPlayers > 0 && parsedPlayers.isEmpty) {
+      debugPrint(
+        "[MatchModel] joinedPlayers=$joinedPlayers but no player objects parsed. Keys: ${merged.keys.toList()}",
+      );
+    }
     final maxPlayers =
         _readMaxPlayers(merged) ??
         _readInt(merged, const ["max_players", "total_players", "player_limit"]) ??
@@ -149,7 +154,10 @@ class MatchModel {
           ? maxPlayers
           : sanitizedJoinedPlayers,
       feePerPlayer:
-          _readInt(merged, const ["fee_per_player", "price_per_player", "amount"]) ??
+          _readInt(
+                merged,
+                const ["fee", "fee_per_player", "price_per_player", "amount"],
+              ) ??
               0,
       slotTotalCost:
           _readInt(merged, const ["slot_total_cost"]) ??
@@ -179,12 +187,16 @@ class MatchModel {
       latitude: _readDouble(merged, const ["lat", "latitude"]),
       longitude: _readDouble(merged, const ["lng", "longitude", "long"]),
       status: _readString(merged, const ["status"], fallback: "open"),
-      isCreator: _readBool(merged, const ["is_creator", "creator", "created_by_me"]) ??
-          false,
+      isCreator:
+          _readBool(
+            merged,
+            const ["is_creator", "creator", "created_by_me"],
+          ) ??
+          parsedPlayers.any((player) => player.isCreator),
       canFinalize: _readBool(merged, const ["can_finalize"]) ?? false,
       hasJoined:
           _readBool(merged, const ["has_joined", "is_joined"]) ??
-          parsedPlayers.any((player) => !player.hasLeft),
+          false,
       myStatus: _readString(merged, const ["my_status"], fallback: ""),
       myPaymentStatus:
           _readString(merged, const ["my_payment_status"], fallback: ""),
@@ -242,6 +254,11 @@ class MatchModel {
       source["players"],
       source["participants"],
       source["members"],
+      source["users"],
+      source["joined_users"],
+      source["joinedPlayers"],
+      source["accepted_players"],
+      source["confirmed_players"],
     ];
 
     for (final candidate in candidates) {
@@ -396,40 +413,61 @@ class MatchPlayerModel {
   });
 
   factory MatchPlayerModel.fromJson(Map<String, dynamic> json) {
+    final data = MatchModel._readMap(json['data']);
+    final player = MatchModel._readMap(json['player']);
+    final user = MatchModel._readMap(json['user']);
+    final member = MatchModel._readMap(json['member']);
+    final merged = <String, dynamic>{
+      ...data,
+      ...player,
+      ...user,
+      ...member,
+      ...json,
+    };
+
     return MatchPlayerModel(
-      id: MatchModel._readInt(json, const ['player_id', 'id', 'user_id']) ?? 0,
+      id:
+          MatchModel._readInt(
+            merged,
+            const ['player_id', 'id', 'user_id', 'member_id'],
+          ) ??
+          0,
       name: MatchModel._readString(
-        json,
-        const ['name', 'player_name'],
+        merged,
+        const ['name', 'player_name', 'full_name', 'display_name', 'username'],
         fallback: 'Player',
       ),
       phone: MatchModel._readString(
-        json,
-        const ['phone', 'phone_number'],
+        merged,
+        const ['phone', 'phone_number', 'mobile'],
         fallback: '',
       ),
       status: MatchModel._readString(
-        json,
-        const ['status'],
+        merged,
+        const ['status', 'join_status'],
         fallback: '',
       ),
       paymentStatus: MatchModel._readString(
-        json,
+        merged,
         const ['payment_status'],
         fallback: '',
       ),
       feePaid: MatchModel._readInt(
-            json,
+            merged,
             const ['fee_paid'],
           ) ??
           0,
       source: MatchModel._readString(
-        json,
+        merged,
         const ['source'],
         fallback: '',
       ),
       isCreator:
-          MatchModel._readBool(json, const ['is_creator', 'creator']) ?? false,
+          MatchModel._readBool(
+            merged,
+            const ['is_creator', 'creator'],
+          ) ??
+          false,
     );
   }
 

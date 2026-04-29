@@ -571,3 +571,390 @@ class TournamentTeamPlayersResponse {
     );
   }
 }
+
+class TournamentScheduleItem {
+  final String title;
+  final String subtitle;
+  final String date;
+  final String time;
+  final String venue;
+  final String status;
+
+  const TournamentScheduleItem({
+    required this.title,
+    required this.subtitle,
+    required this.date,
+    required this.time,
+    required this.venue,
+    required this.status,
+  });
+
+  factory TournamentScheduleItem.fromJson(Map<String, dynamic> json) {
+    return TournamentScheduleItem(
+      title: TournamentModel._readString(
+        json,
+        const ['title', 'name', 'round', 'stage', 'match'],
+        fallback: 'Schedule',
+      ),
+      subtitle: TournamentModel._readString(
+        json,
+        const ['subtitle', 'description', 'details', 'note'],
+        fallback: '',
+      ),
+      date: TournamentModel._readString(
+        json,
+        const ['date', 'day', 'start_date'],
+        fallback: '',
+      ),
+      time: TournamentModel._readString(
+        json,
+        const ['time', 'start_time', 'slot_time'],
+        fallback: '',
+      ),
+      venue: TournamentModel._readString(
+        json,
+        const ['venue', 'location', 'ground', 'turf_name'],
+        fallback: '',
+      ),
+      status: TournamentModel._readString(
+        json,
+        const ['status'],
+        fallback: '',
+      ),
+    );
+  }
+
+  factory TournamentScheduleItem.fromText(String value) {
+    return TournamentScheduleItem(
+      title: value,
+      subtitle: '',
+      date: '',
+      time: '',
+      venue: '',
+      status: '',
+    );
+  }
+
+  String get metaLine {
+    final parts = <String>[
+      if (date.trim().isNotEmpty) date.trim(),
+      if (time.trim().isNotEmpty) time.trim(),
+      if (venue.trim().isNotEmpty) venue.trim(),
+    ];
+    return parts.join(' | ');
+  }
+}
+
+class TournamentDetailModel {
+  final int id;
+  final String name;
+  final String sport;
+  final String city;
+  final String venue;
+  final String startDate;
+  final String endDate;
+  final num entryFee;
+  final int maxTeams;
+  final int registeredTeams;
+  final TournamentPrizeModel prizes;
+  final String posterUrl;
+  final String status;
+  final String description;
+  final List<String> terms;
+  final List<TournamentScheduleItem> schedule;
+  final List<TournamentRegisteredTeamModel> teams;
+
+  const TournamentDetailModel({
+    required this.id,
+    required this.name,
+    required this.sport,
+    required this.city,
+    required this.venue,
+    required this.startDate,
+    required this.endDate,
+    required this.entryFee,
+    required this.maxTeams,
+    required this.registeredTeams,
+    required this.prizes,
+    required this.posterUrl,
+    required this.status,
+    required this.description,
+    required this.terms,
+    required this.schedule,
+    required this.teams,
+  });
+
+  factory TournamentDetailModel.fromJson(Map<String, dynamic> json) {
+    final merged = _mergeTournamentDetailMaps(json);
+    return TournamentDetailModel(
+      id: TournamentModel._readInt(merged, const ['id']) ?? 0,
+      name: TournamentModel._readString(
+        merged,
+        const ['name'],
+        fallback: 'Tournament',
+      ),
+      sport: TournamentModel._readString(
+        merged,
+        const ['sport'],
+        fallback: '-',
+      ),
+      city: TournamentModel._readString(
+        merged,
+        const ['city'],
+        fallback: '-',
+      ),
+      venue: TournamentModel._readString(
+        merged,
+        const ['venue', 'venue_address', 'ground'],
+        fallback: '-',
+      ),
+      startDate: TournamentModel._readString(
+        merged,
+        const ['start_date', 'date'],
+        fallback: '-',
+      ),
+      endDate: TournamentModel._readString(
+        merged,
+        const ['end_date'],
+        fallback: '-',
+      ),
+      entryFee:
+          TournamentModel._readNum(merged, const ['entry_fee', 'fee']) ?? 0,
+      maxTeams: TournamentModel._readInt(merged, const ['max_teams']) ?? 0,
+      registeredTeams:
+          TournamentModel._readInt(
+            merged,
+            const ['registered_teams', 'teams_count'],
+          ) ??
+          _readTeams(merged).length,
+      prizes: TournamentPrizeModel.fromJson(
+        TournamentModel._readMap(merged['prizes']),
+      ),
+      posterUrl: TournamentModel._readString(
+        merged,
+        const ['poster_url'],
+        fallback: '',
+      ),
+      status: TournamentModel._readString(
+        merged,
+        const ['status'],
+        fallback: 'open',
+      ),
+      description: TournamentModel._readString(
+        merged,
+        const ['description', 'about', 'details'],
+        fallback: '',
+      ),
+      terms: _readTerms(merged),
+      schedule: _readSchedule(merged),
+      teams: _readTeams(merged),
+    );
+  }
+
+  factory TournamentDetailModel.fromTournament(
+    TournamentModel tournament, {
+    List<TournamentRegisteredTeamModel> teams =
+        const <TournamentRegisteredTeamModel>[],
+  }) {
+    return TournamentDetailModel(
+      id: tournament.id,
+      name: tournament.name,
+      sport: tournament.sport,
+      city: tournament.city,
+      venue: tournament.venue,
+      startDate: tournament.startDate,
+      endDate: tournament.endDate,
+      entryFee: tournament.entryFee,
+      maxTeams: tournament.maxTeams,
+      registeredTeams: tournament.registeredTeams,
+      prizes: tournament.prizes,
+      posterUrl: tournament.posterUrl,
+      status: tournament.status,
+      description: '',
+      terms: const <String>[],
+      schedule: const <TournamentScheduleItem>[],
+      teams: teams,
+    );
+  }
+
+  String get dateLabel => '$startDate - $endDate';
+  String get locationLabel => '$city | $venue';
+  String get entryFeeLabel =>
+      entryFee > 0 ? 'Rs ${TournamentModel._formatAmount(entryFee)}' : 'Free';
+  String get statusLabel {
+    final normalized = status.trim().toLowerCase();
+    switch (normalized) {
+      case 'open':
+        return 'Open';
+      case 'ongoing':
+        return 'Ongoing';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+      case 'canceled':
+        return 'Canceled';
+      default:
+        return normalized.isEmpty
+            ? 'Open'
+            : normalized[0].toUpperCase() + normalized.substring(1);
+    }
+  }
+
+  static Map<String, dynamic> _mergeTournamentDetailMaps(
+    Map<String, dynamic> source,
+  ) {
+    final merged = <String, dynamic>{...source};
+    for (final key in const ['tournament', 'data']) {
+      final value = source[key];
+      if (value is Map<String, dynamic>) {
+        merged.addAll(value);
+      } else if (value is Map) {
+        merged.addAll(Map<String, dynamic>.from(value));
+      }
+    }
+    return merged;
+  }
+
+  static List<String> _readTerms(Map<String, dynamic> source) {
+    for (final key in const [
+      'terms',
+      'rules',
+      'terms_and_conditions',
+      'guidelines',
+      'instructions',
+    ]) {
+      final value = source[key];
+      if (value is String && value.trim().isNotEmpty) {
+        return value
+            .split(RegExp(r'[\n\r]+'))
+            .map((item) => item.replaceFirst(RegExp(r'^[\-\*\u2022]\s*'), '').trim())
+            .where((item) => item.isNotEmpty)
+            .toList();
+      }
+      if (value is List) {
+        final items =
+            value
+                .map((item) {
+                  if (item is String) {
+                    return item.trim();
+                  }
+                  if (item is Map) {
+                    final map = Map<String, dynamic>.from(item);
+                    return TournamentModel._readString(
+                      map,
+                      const ['title', 'label', 'text', 'description', 'name'],
+                    );
+                  }
+                  return '';
+                })
+                .where((item) => item.isNotEmpty)
+                .toList();
+        if (items.isNotEmpty) {
+          return items;
+        }
+      }
+    }
+    return const <String>[];
+  }
+
+  static List<TournamentScheduleItem> _readSchedule(
+    Map<String, dynamic> source,
+  ) {
+    for (final key in const [
+      'schedule',
+      'schedules',
+      'fixtures',
+      'rounds',
+      'matches',
+      'itinerary',
+    ]) {
+      final value = source[key];
+      if (value is String && value.trim().isNotEmpty) {
+        return <TournamentScheduleItem>[
+          TournamentScheduleItem.fromText(value.trim()),
+        ];
+      }
+      if (value is List) {
+        final items =
+            value
+                .map((item) {
+                  if (item is String) {
+                    return TournamentScheduleItem.fromText(item.trim());
+                  }
+                  if (item is Map) {
+                    return TournamentScheduleItem.fromJson(
+                      Map<String, dynamic>.from(item),
+                    );
+                  }
+                  return null;
+                })
+                .whereType<TournamentScheduleItem>()
+                .where((item) => item.title.trim().isNotEmpty)
+                .toList();
+        if (items.isNotEmpty) {
+          return items;
+        }
+      }
+    }
+    return const <TournamentScheduleItem>[];
+  }
+
+  static List<TournamentRegisteredTeamModel> _readTeams(
+    Map<String, dynamic> source,
+  ) {
+    for (final key in const ['teams', 'registered_teams', 'participants']) {
+      final value = source[key];
+      if (value is List) {
+        return value
+            .whereType<Map>()
+            .map(
+              (item) => TournamentRegisteredTeamModel.fromJson(
+                Map<String, dynamic>.from(item),
+              ),
+            )
+            .toList();
+      }
+      if (value is Map) {
+        final nested =
+            value['data'] ?? value['teams'] ?? value['registered_teams'];
+        if (nested is List) {
+          return nested
+              .whereType<Map>()
+              .map(
+                (item) => TournamentRegisteredTeamModel.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList();
+        }
+      }
+    }
+    return const <TournamentRegisteredTeamModel>[];
+  }
+}
+
+class TournamentDetailResponse {
+  final TournamentDetailModel? tournament;
+
+  const TournamentDetailResponse({
+    required this.tournament,
+  });
+
+  factory TournamentDetailResponse.fromJson(Map<String, dynamic> json) {
+    final source =
+        json['tournament'] is Map<String, dynamic>
+            ? json['tournament'] as Map<String, dynamic>
+            : json['tournament'] is Map
+            ? Map<String, dynamic>.from(json['tournament'] as Map)
+            : json['data'] is Map<String, dynamic>
+            ? json['data'] as Map<String, dynamic>
+            : json['data'] is Map
+            ? Map<String, dynamic>.from(json['data'] as Map)
+            : json;
+
+    return TournamentDetailResponse(
+      tournament:
+          source.isEmpty ? null : TournamentDetailModel.fromJson(source),
+    );
+  }
+}

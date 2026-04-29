@@ -52,6 +52,8 @@ class ApiConstants {
   static const joinBooking = "/bookings/join";
   static String tournamentRegister(dynamic tournamentId) =>
       "/tournaments/$tournamentId/register";
+  static String tournamentDetail(dynamic tournamentId) =>
+      "/tournaments/$tournamentId";
   static String tournamentTeams(dynamic tournamentId) =>
       "/tournaments/$tournamentId/teams";
   static String tournamentTeamPlayers(dynamic tournamentId, dynamic teamId) =>

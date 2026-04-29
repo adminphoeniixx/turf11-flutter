@@ -6,6 +6,8 @@ import '../data/models/turf_model.dart';
 import '../data/services/turf_service.dart';
 
 class TurfController extends GetxController {
+  static const int defaultRadiusKm = 20;
+
   final turfs = <TurfModel>[].obs;
   final slots = <TurfSlotModel>[].obs;
   final reviews = <TurfReviewModel>[].obs;
@@ -17,18 +19,20 @@ class TurfController extends GetxController {
   final slotsErrorMessage = ''.obs;
   final detailErrorMessage = ''.obs;
   final isUsingFallbackLocation = false.obs;
+  final selectedRadiusKm = defaultRadiusKm.obs;
 
-  Future<void> loadNearbyTurfs({int radius = 20}) async {
+  Future<void> loadNearbyTurfs({int? radius}) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
-      // final location = await LocationService.getCurrentOrFallbackLocation();
-      // isUsingFallbackLocation.value = location.isFallback;
-      isUsingFallbackLocation.value = true;
+      final activeRadius = radius ?? selectedRadiusKm.value;
+      selectedRadiusKm.value = activeRadius;
+      final location = await LocationService.getCurrentOrFallbackLocation();
+      isUsingFallbackLocation.value = location.isFallback;
       final result = await TurfService.fetchNearbyTurfs(
-        lat: 28.4595,
-        lng: 77.0266,
-        radius: radius,
+        lat: location.latitude,
+        lng: location.longitude,
+        radius: activeRadius,
       );
       turfs.assignAll(result);
     } catch (e) {

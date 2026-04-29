@@ -7,10 +7,6 @@ import '../data/models/match_model.dart';
 import '../data/services/match_service.dart';
 
 class MatchController extends GetxController {
-  static const defaultLat = 28.4595;
-  static const defaultLng = 77.0266;
-  static const defaultRadius = 20;
-
   final nearbyMatches = <MatchModel>[].obs;
   final myMatches = <MatchModel>[].obs;
   final selectedMatch = Rxn<MatchModel>();
@@ -28,27 +24,26 @@ class MatchController extends GetxController {
   final isInvitePlayersLoading = false.obs;
   final isFinalizeLoading = false.obs;
   final isUsingFallbackLocation = false.obs;
-  final currentLat = defaultLat.obs;
-  final currentLng = defaultLng.obs;
+  final currentLat = 0.0.obs;
+  final currentLng = 0.0.obs;
+  final nearbyMatchesRadiusKm = 20.obs;
+  final nearbyPlayersRadiusKm = 10.obs;
 
   Future<void> loadNearbyMatches({
     double? lat,
     double? lng,
-    int radius = defaultRadius,
+    int? radius,
   }) async {
     try {
       isNearbyLoading.value = true;
+      final activeRadius = radius ?? nearbyMatchesRadiusKm.value;
+      nearbyMatchesRadiusKm.value = activeRadius;
       late final double requestLat;
       late final double requestLng;
       if (lat == null || lng == null) {
-        // final location = await _resolveLocation();
-        // requestLat = location.latitude;
-        // requestLng = location.longitude;
-        currentLat.value = defaultLat;
-        currentLng.value = defaultLng;
-        isUsingFallbackLocation.value = true;
-        requestLat = defaultLat;
-        requestLng = defaultLng;
+        final location = await _resolveLocation();
+        requestLat = location.latitude;
+        requestLng = location.longitude;
       } else {
         currentLat.value = lat;
         currentLng.value = lng;
@@ -59,7 +54,7 @@ class MatchController extends GetxController {
       final matches = await MatchService.fetchNearbyMatches(
         lat: requestLat,
         lng: requestLng,
-        radius: radius,
+        radius: activeRadius,
       );
       nearbyMatches.assignAll(matches);
     } catch (e) {
@@ -142,6 +137,13 @@ class MatchController extends GetxController {
       await _refreshAfterMutation(matchId);
       return true;
     } catch (e) {
+      final message = _readableError(e);
+      if (_isAlreadyJoinedMessage(message)) {
+        setMatchJoinedState(matchId, true);
+        Get.snackbar("Info", message);
+        await _refreshAfterMutation(matchId);
+        return true;
+      }
       _logError('joinMatch', e);
       return false;
     } finally {
@@ -177,6 +179,12 @@ class MatchController extends GetxController {
       await refreshAll();
       return true;
     } catch (e) {
+      final message = _readableError(e);
+      if (_isAlreadyJoinedMessage(message)) {
+        Get.snackbar("Info", message);
+        await refreshAll();
+        return true;
+      }
       _logError('joinMatchWithCode', e);
       return false;
     } finally {
@@ -200,28 +208,29 @@ class MatchController extends GetxController {
   Future<List<NearbyPlayerModel>> loadNearbyPlayers({
     double? lat,
     double? lng,
-    int radius = 10,
+    int? radius,
   }) async {
     try {
       isNearbyPlayersLoading.value = true;
+      final activeRadius = radius ?? nearbyPlayersRadiusKm.value;
+      nearbyPlayersRadiusKm.value = activeRadius;
       late final double requestLat;
       late final double requestLng;
       if (lat == null || lng == null) {
-        currentLat.value = defaultLat;
-        currentLng.value = defaultLng;
-        isUsingFallbackLocation.value = true;
-        requestLat = defaultLat;
-        requestLng = defaultLng;
+        final location = await _resolveLocation();
+        requestLat = location.latitude;
+        requestLng = location.longitude;
       } else {
         currentLat.value = lat;
         currentLng.value = lng;
+        isUsingFallbackLocation.value = false;
         requestLat = lat;
         requestLng = lng;
       }
       final players = await MatchService.fetchNearbyPlayers(
         lat: requestLat,
         lng: requestLng,
-        radius: radius,
+        radius: activeRadius,
       );
       nearbyPlayers.assignAll(players);
       return players;
@@ -294,8 +303,7 @@ class MatchController extends GetxController {
   Future<void> refreshAll() async {
     await Future.wait([
       loadNearbyMatches(
-        lat: defaultLat,
-        lng: defaultLng,
+        radius: nearbyMatchesRadiusKm.value,
       ),
       loadMyMatches(),
     ]);
@@ -304,8 +312,7 @@ class MatchController extends GetxController {
   Future<void> _refreshAfterMutation(int matchId) async {
     await Future.wait([
       loadNearbyMatches(
-        lat: defaultLat,
-        lng: defaultLng,
+        radius: nearbyMatchesRadiusKm.value,
       ),
       loadMyMatches(),
       loadMatchDetail(matchId),
@@ -337,6 +344,12 @@ class MatchController extends GetxController {
       return raw.substring("Exception: ".length);
     }
     return raw;
+  }
+
+  bool _isAlreadyJoinedMessage(String message) {
+    final normalized = message.trim().toLowerCase();
+    return normalized.contains('already in this match') ||
+        normalized.contains('already joined');
   }
 
   void _logError(String action, Object error) {

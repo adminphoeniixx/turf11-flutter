@@ -45,10 +45,6 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
                 final wallet = _walletController.wallet.value;
                 final isLoading =
                     _walletController.isLoading.value && wallet == null;
-                final transactions = _walletController.transactions;
-                final isTransactionsLoading =
-                    _walletController.isTransactionsLoading.value;
-
                 return SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
                   child: Column(
@@ -201,48 +197,6 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
                         trailingIcon: Icons.arrow_forward,
                         onTap: () {},
                       ),
-                      const SectionLabel('Transaction History'),
-                      if (isLoading)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      else if (isTransactionsLoading && transactions.isEmpty)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      else if (transactions.isEmpty)
-                        SmallCard(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Center(
-                              child: Text(
-                                'No wallet transactions yet.',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  color: AppColors.muted,
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        SmallCard(
-                          child: Column(
-                            children: [
-                              for (var i = 0; i < transactions.length; i++) ...[
-                                _txnItem(transactions[i]),
-                                if (i != transactions.length - 1)
-                                  const AppDivider(),
-                              ],
-                            ],
-                          ),
-                        ),
                     ],
                   ),
                 );
@@ -301,7 +255,12 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
           const SizedBox(height: 14),
           Row(
             children: [
-              _tag('Transactions ${_walletController.transactions.length}'),
+              GestureDetector(
+                onTap: _openTransactionHistorySheet,
+                child: _tag(
+                  'Transactions ${_walletController.transactions.length}',
+                ),
+              ),
               const SizedBox(width: 8),
               _tag(wallet == null
                   ? 'Points 0'
@@ -519,6 +478,90 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _openTransactionHistorySheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Obx(() {
+                final transactions = _walletController.transactions;
+                final isTransactionsLoading =
+                    _walletController.isTransactionsLoading.value;
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Transaction History',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Aapke wallet ke saare credits aur debits yahan dikhenge.',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Flexible(
+                      child: isTransactionsLoading && transactions.isEmpty
+                          ? const Center(child: CircularProgressIndicator())
+                          : transactions.isEmpty
+                              ? Center(
+                                  child: Text(
+                                    'No wallet transactions yet.',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
+                                )
+                              : ListView.separated(
+                                  shrinkWrap: true,
+                                  itemCount: transactions.length,
+                                  separatorBuilder: (_, __) =>
+                                      const AppDivider(),
+                                  itemBuilder: (context, index) =>
+                                      _txnItem(transactions[index]),
+                                ),
+                    ),
+                  ],
+                );
+              }),
+            ),
+          ),
+        );
+      },
     );
   }
 }

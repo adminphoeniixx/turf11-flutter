@@ -20,7 +20,6 @@ class MyBookingsScreen extends StatefulWidget {
 
 class _MyBookingsScreenState extends State<MyBookingsScreen> {
   late final BookingController controller;
-  final TextEditingController _joinCodeController = TextEditingController();
 
   @override
   void initState() {
@@ -30,73 +29,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         : Get.put(BookingController());
     WidgetsBinding.instance
         .addPostFrameCallback((_) => controller.loadBookings());
-  }
-
-  Widget _joinByCodeCard() {
-    return SmallCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Join Booking with Code',
-            style: GoogleFonts.dmSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: AppColors.dark,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Use a shared booking code to join someone else\'s booking.',
-            style: GoogleFonts.dmSans(
-              fontSize: 11,
-              color: AppColors.muted,
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _joinCodeController,
-            textCapitalization: TextCapitalization.characters,
-            decoration: const InputDecoration(
-              hintText: 'e.g. BK-AB3X5',
-            ),
-          ),
-          const SizedBox(height: 12),
-          Obx(
-            () => AppButton(
-              label: controller.isCreateLoading.value ? 'Joining...' : 'Join Booking',
-              onTap: controller.isCreateLoading.value
-                  ? null
-                  : () async {
-                      final code = _joinCodeController.text.trim().toUpperCase();
-                      if (code.isEmpty) {
-                        Get.snackbar('Error', 'Please enter a valid booking code.');
-                        return;
-                      }
-                      final result = await controller.joinBookingByCode(code);
-                      if (result.success) {
-                        _joinCodeController.clear();
-                      }
-                      Get.snackbar(
-                        result.success ? 'Success' : 'Error',
-                        result.message.isNotEmpty
-                            ? result.message
-                            : result.success
-                                ? 'Booking joined successfully.'
-                                : 'Unable to join booking.',
-                      );
-                    },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _joinCodeController.dispose();
-    super.dispose();
   }
 
   @override
@@ -134,8 +66,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _joinByCodeCard(),
-                  const SizedBox(height: 8),
                 ],
               ),
             ),

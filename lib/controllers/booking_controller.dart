@@ -168,24 +168,6 @@ class BookingController extends GetxController {
     }
   }
 
-  Future<BookingCreateResult> joinBookingByCode(String code) async {
-    try {
-      isCreateLoading.value = true;
-      final result = await BookingService.joinBookingByCode(code: code);
-      if (result.success) {
-        await loadBookings(status: selectedStatus.value);
-      }
-      return result;
-    } catch (e) {
-      return BookingCreateResult(
-        success: false,
-        message: _readableError(e),
-      );
-    } finally {
-      isCreateLoading.value = false;
-    }
-  }
-
   Future<void> loadBookingPlayers(int bookingId) async {
     try {
       isPlayersLoading.value = true;

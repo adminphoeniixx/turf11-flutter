@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../core/location_service.dart';
 import '../controllers/profile_controller.dart';
 import '../controllers/match_controller.dart';
 import '../controllers/tournament_controller.dart';
@@ -58,8 +60,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _HomeContent extends StatelessWidget {
+class _HomeContent extends StatefulWidget {
   const _HomeContent();
+
+  @override
+  State<_HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends State<_HomeContent> {
+  final TextEditingController _locationCityController = TextEditingController();
+
+  @override
+  void dispose() {
+    _locationCityController.dispose();
+    super.dispose();
+  }
 
   String _homeLocation(PlayerProfile? profile) {
     final location = profile?.locationLabel ?? '';
@@ -77,9 +92,281 @@ class _HomeContent extends StatelessWidget {
     return 'Today';
   }
 
+  String _homeMatchSubText(MatchModel match) {
+    final dateLabel = _formatHomeMatchDate(match.date);
+    final timeLabel = match.timeStart.trim().isNotEmpty
+        ? match.timeEnd.trim().isNotEmpty
+            ? '${match.timeStart}-${match.timeEnd}'
+            : match.timeStart.trim()
+        : '';
+    final slotsLabel = match.isFull ? 'Full' : '${match.slotsLeft} slots left';
+    final parts = <String>[
+      if (dateLabel.isNotEmpty) dateLabel,
+      if (timeLabel.isNotEmpty) timeLabel,
+      if (match.turfName.trim().isNotEmpty && match.turfName.trim() != '-')
+        match.turfName.trim(),
+      if (match.city.trim().isNotEmpty) match.city.trim(),
+      slotsLabel,
+      if (match.inviteCode.trim().isNotEmpty) match.inviteCode.trim(),
+    ];
+    return parts.join(' | ');
+  }
+
   String _playerInitialsForIndex(int index) {
     const initials = ['RS', 'AK', 'MV', 'SK', 'PJ', 'RT', 'NK', 'AD'];
     return initials[index % initials.length];
+  }
+
+  Future<({String city, String address})> _resolveAddress(
+    AppLocation location,
+  ) async {
+    try {
+      final placemarks = await placemarkFromCoordinates(
+        location.latitude,
+        location.longitude,
+      );
+      if (placemarks.isEmpty) {
+        return (city: '', address: '');
+      }
+      final placemark = placemarks.first;
+      final city = [
+        placemark.locality,
+        placemark.subAdministrativeArea,
+        placemark.administrativeArea,
+      ].firstWhere(
+        (value) => value != null && value.trim().isNotEmpty,
+        orElse: () => '',
+      );
+      final addressParts = <String>[
+        if ((placemark.street ?? '').trim().isNotEmpty)
+          placemark.street!.trim(),
+        if ((placemark.subLocality ?? '').trim().isNotEmpty)
+          placemark.subLocality!.trim(),
+        if ((placemark.locality ?? '').trim().isNotEmpty)
+          placemark.locality!.trim(),
+        if ((placemark.administrativeArea ?? '').trim().isNotEmpty)
+          placemark.administrativeArea!.trim(),
+        if ((placemark.postalCode ?? '').trim().isNotEmpty)
+          placemark.postalCode!.trim(),
+      ];
+      return (
+        city: city.toString().trim(),
+        address: addressParts.join(', '),
+      );
+    } catch (_) {
+      return (city: '', address: '');
+    }
+  }
+
+  Future<void> _showLocationErrorDialog(String rawMessage) async {
+    final message = rawMessage.replaceFirst('Exception: ', '');
+    final isServiceDisabled = message.toLowerCase().contains(
+      'location service is disabled',
+    );
+    final isPermissionIssue = message.toLowerCase().contains('permission');
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Location Error'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            if (isServiceDisabled)
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(dialogContext).pop();
+                  await LocationService.openLocationSettings();
+                },
+                child: const Text('Open Settings'),
+              ),
+            if (isPermissionIssue)
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(dialogContext).pop();
+                  await LocationService.openAppSettings();
+                },
+                child: const Text('App Settings'),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _openLocationSheet(
+    BuildContext context,
+    ProfileController profileController,
+  ) async {
+    final profile = profileController.profile.value;
+    _locationCityController.text = profile?.city.trim() ?? '';
+    AppLocation? resolvedLocation;
+    String resolvedAddress = '';
+    bool isFetching = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    12,
+                    20,
+                    24 + MediaQuery.of(sheetContext).viewInsets.bottom,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: AppColors.border,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Update Location',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Current location fetch karke city ke saath profile update karo.',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      AppButton(
+                        label: isFetching
+                            ? 'Fetching Location...'
+                            : 'Fetch Current Location',
+                        isOutline: true,
+                        onTap: isFetching
+                            ? null
+                            : () async {
+                                setSheetState(() => isFetching = true);
+                                try {
+                                  final location = await LocationService
+                                      .getCurrentLocation();
+                                  final locationInfo =
+                                      await _resolveAddress(location);
+                                  setSheetState(() {
+                                    resolvedLocation = location;
+                                    resolvedAddress = locationInfo.address;
+                                    if (locationInfo.city.trim().isNotEmpty) {
+                                      _locationCityController.text =
+                                          locationInfo.city.trim();
+                                    }
+                                    isFetching = false;
+                                  });
+                                } catch (e) {
+                                  setSheetState(() => isFetching = false);
+                                  await _showLocationErrorDialog(
+                                    e.toString(),
+                                  );
+                                }
+                              },
+                      ),
+                      if (resolvedLocation != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.bg,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Text(
+                            'Lat: ${resolvedLocation!.latitude.toStringAsFixed(4)} | Lng: ${resolvedLocation!.longitude.toStringAsFixed(4)}'
+                            '${resolvedAddress.trim().isNotEmpty ? '\n$resolvedAddress' : ''}'
+                            '${resolvedLocation!.isFallback ? '\nUsing fallback location.' : ''}',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              color: AppColors.dark,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _locationCityController,
+                        decoration: const InputDecoration(
+                          hintText: 'City auto-filled from current location',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Obx(
+                        () => AppButton(
+                          label: profileController.isUpdating.value
+                              ? 'Updating...'
+                              : 'Update Location',
+                          onTap: profileController.isUpdating.value
+                              ? null
+                              : () async {
+                                  final city =
+                                      _locationCityController.text.trim();
+                                  if (city.isEmpty) {
+                                    Get.snackbar(
+                                      'Error',
+                                      'Please enter your city.',
+                                    );
+                                    return;
+                                  }
+                                  if (resolvedLocation == null) {
+                                    Get.snackbar(
+                                      'Error',
+                                      'Please fetch location first.',
+                                    );
+                                    return;
+                                  }
+                                  final success =
+                                      await profileController.updateLocation(
+                                    latitude: resolvedLocation!.latitude,
+                                    longitude: resolvedLocation!.longitude,
+                                    city: city,
+                                  );
+                                  if (success && sheetContext.mounted) {
+                                    Navigator.of(sheetContext).pop();
+                                  }
+                                },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -140,23 +427,33 @@ class _HomeContent extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(
-                                LucideIcons.mapPin,
-                                size: 11,
-                                color: AppColors.green,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                location,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
+                          GestureDetector(
+                            onTap: () =>
+                                _openLocationSheet(context, profileController),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  LucideIcons.mapPin,
+                                  size: 11,
                                   color: AppColors.green,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                Text(
+                                  location,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.green,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  LucideIcons.chevronDown,
+                                  size: 12,
+                                  color: AppColors.green,
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -466,7 +763,7 @@ class _HomeContent extends StatelessWidget {
                     turf: turf,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const CreateMatchScreen(),
+                        builder: (_) => CreateMatchScreen(initialTurf: turf),
                         // builder: (_) => BookingScreen(
                         //   turfId: turf.id,
                         //   turfName: turf.name,
@@ -538,12 +835,15 @@ class _HomeContent extends StatelessWidget {
                   }
 
                   final match = matches.first;
-                  final slotsLeft = match.slotsLeft;
-                  final progress = match.fillProgress;
                   final isJoined = matchController.isMatchJoined(match.id);
-                  final visibleSlots = match.maxPlayers.clamp(0, 8);
-                  final filledSlots =
-                      match.joinedPlayers.clamp(0, visibleSlots);
+                  final visiblePlayers = match.activePlayers.take(5).toList();
+                  final displayPlayerLabels =
+                      visiblePlayers
+                          .map((player) => player.initials)
+                          .toList();
+                  final totalPlayers = match.activePlayers.length;
+                  final remainingPlayersCount =
+                      (totalPlayers - displayPlayerLabels.length).clamp(0, 999);
 
                   return Container(
                     width: double.infinity,
@@ -582,9 +882,9 @@ class _HomeContent extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${_formatHomeMatchDate(match.date)} ${match.timeStart} · $slotsLeft slots left',
+                                    _homeMatchSubText(match),
                                     style: GoogleFonts.dmSans(
-                                      fontSize: 10.5,
+                                      fontSize: 11,
                                       color: AppColors.muted,
                                     ),
                                   ),
@@ -611,7 +911,7 @@ class _HomeContent extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(26),
                                 ),
                                 child: Text(
-                                  isJoined ? 'View' : 'Join',
+                                  isJoined ? 'View Details' : 'Join Match',
                                   style: GoogleFonts.dmSans(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
@@ -626,39 +926,55 @@ class _HomeContent extends StatelessWidget {
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: List.generate(visibleSlots, (index) {
-                            final filled = index < filledSlots;
-                            return Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: filled
-                                    ? AppColors.greenLt
-                                    : AppColors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: filled
-                                      ? AppColors.green
-                                      : AppColors.border,
-                                  width: 1.5,
+                          children: [
+                            ...displayPlayerLabels.map(
+                              (label) => Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: AppColors.greenLt,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.green,
+                                    width: 1.5,
+                                  ),
                                 ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  filled ? _playerInitialsForIndex(index) : '+',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 11,
-                                    fontWeight: filled
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                    color: filled
-                                        ? AppColors.green
-                                        : AppColors.muted2,
+                                child: Center(
+                                  child: Text(
+                                    label,
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.green,
+                                    ),
                                   ),
                                 ),
                               ),
-                            );
-                          }),
+                            ),
+                            if (remainingPlayersCount > 0)
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: AppColors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.border,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    '+$remainingPlayersCount',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.muted2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         Container(
@@ -667,7 +983,7 @@ class _HomeContent extends StatelessWidget {
                             borderRadius: BorderRadius.circular(999),
                             child: LinearProgressIndicator(
                               minHeight: 6,
-                              value: progress,
+                              value: match.fillProgress,
                               backgroundColor: AppColors.border,
                               valueColor: const AlwaysStoppedAnimation<Color>(
                                 AppColors.green,
@@ -1200,3 +1516,4 @@ class _HomeMatchShimmerCard extends StatelessWidget {
     );
   }
 }
+

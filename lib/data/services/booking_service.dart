@@ -111,26 +111,6 @@ class BookingService {
     );
   }
 
-  static Future<BookingCreateResult> joinBookingByCode({
-    required String code,
-  }) async {
-    final res = await ApiClient.post(
-      ApiConstants.joinBooking,
-      data: {'code': code},
-    );
-    final data = res.data;
-    if (data is Map<String, dynamic>) {
-      return BookingCreateResult.fromJson(data);
-    }
-    if (data is Map) {
-      return BookingCreateResult.fromJson(Map<String, dynamic>.from(data));
-    }
-    return const BookingCreateResult(
-      success: false,
-      message: 'Unexpected join booking response received.',
-    );
-  }
-
   static Future<List<BookingPlayerModel>> fetchBookingPlayers({
     required int bookingId,
   }) async {

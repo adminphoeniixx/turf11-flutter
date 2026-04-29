@@ -10,21 +10,32 @@ class TournamentController extends GetxController {
   final tournamentTeamPlayers = <TournamentTeamPlayerModel>[].obs;
   final selectedTournamentSummary = Rxn<TournamentTeamsSummary>();
   final selectedTournamentTeamSummary = Rxn<TournamentTeamPlayersSummary>();
+  final selectedTournamentDetail = Rxn<TournamentDetailModel>();
   final isLoading = false.obs;
   final isLoadMoreLoading = false.obs;
   final isTeamsLoading = false.obs;
   final isPlayersLoading = false.obs;
+  final isDetailLoading = false.obs;
   final errorMessage = ''.obs;
   final teamsErrorMessage = ''.obs;
   final playersErrorMessage = ''.obs;
+  final detailErrorMessage = ''.obs;
   final totalTournaments = 0.obs;
   final currentPage = 1.obs;
   final lastPage = 1.obs;
+  final selectedStatus = 'open'.obs;
 
   bool get hasMoreTournaments => currentPage.value < lastPage.value;
 
-  Future<void> loadTournaments({bool loadMore = false}) async {
+  Future<void> loadTournaments({
+    bool loadMore = false,
+    String? status,
+  }) async {
     try {
+      final activeStatus = (status ?? selectedStatus.value).trim().toLowerCase();
+      if (!loadMore) {
+        selectedStatus.value = activeStatus;
+      }
       final nextPage = loadMore ? currentPage.value + 1 : 1;
       if (loadMore) {
         if (isLoadMoreLoading.value || !hasMoreTournaments) {
@@ -35,7 +46,10 @@ class TournamentController extends GetxController {
         isLoading.value = true;
         errorMessage.value = '';
       }
-      final response = await TournamentService.fetchTournaments(page: nextPage);
+      final response = await TournamentService.fetchTournaments(
+        page: nextPage,
+        status: activeStatus,
+      );
       if (loadMore) {
         tournaments.addAll(response.tournaments);
       } else {
@@ -80,6 +94,25 @@ class TournamentController extends GetxController {
       );
     } finally {
       isTeamsLoading.value = false;
+    }
+  }
+
+  Future<void> loadTournamentDetail(int tournamentId) async {
+    try {
+      isDetailLoading.value = true;
+      detailErrorMessage.value = '';
+      final response = await TournamentService.fetchTournamentDetail(
+        tournamentId,
+      );
+      selectedTournamentDetail.value = response.tournament;
+    } catch (e) {
+      selectedTournamentDetail.value = null;
+      detailErrorMessage.value = _readableError(e);
+      debugPrint(
+        '[TournamentController] loadTournamentDetail failed: ${detailErrorMessage.value}',
+      );
+    } finally {
+      isDetailLoading.value = false;
     }
   }
 

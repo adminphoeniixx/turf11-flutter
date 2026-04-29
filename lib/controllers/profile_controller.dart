@@ -54,6 +54,33 @@ class ProfileController extends GetxController {
     }
   }
 
+  Future<bool> updateLocation({
+    required double latitude,
+    required double longitude,
+    required String city,
+  }) async {
+    try {
+      isUpdating.value = true;
+      errorMessage.value = '';
+      final response = await ProfileService.updateLocation(
+        latitude: latitude,
+        longitude: longitude,
+        city: city,
+      );
+      profile.value = response.player;
+      Get.snackbar('Success', 'Location updated');
+      return true;
+    } catch (e) {
+      final message = _readableError(e);
+      errorMessage.value = message;
+      Get.snackbar('Error', message);
+      debugPrint('[ProfileController] updateLocation failed: $message');
+      return false;
+    } finally {
+      isUpdating.value = false;
+    }
+  }
+
   String _readableError(Object error) {
     final raw = error.toString();
     if (raw.startsWith('Exception: ')) {

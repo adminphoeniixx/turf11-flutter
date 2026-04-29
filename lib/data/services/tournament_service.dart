@@ -3,10 +3,17 @@ import '../../core/api_constants.dart';
 import '../models/tournament_model.dart';
 
 class TournamentService {
-  static Future<TournamentListResponse> fetchTournaments({int page = 1}) async {
+  static Future<TournamentListResponse> fetchTournaments({
+    int page = 1,
+    String? status,
+  }) async {
+    final queryParameters = <String, dynamic>{
+      'page': page,
+      if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
+    };
     final res = await ApiClient.get(
       ApiConstants.tournaments,
-      queryParameters: {'page': page},
+      queryParameters: queryParameters,
     );
     final data = res.data;
     if (data is Map<String, dynamic>) {
@@ -39,6 +46,20 @@ class TournamentService {
       teams: <TournamentRegisteredTeamModel>[],
       count: 0,
     );
+  }
+
+  static Future<TournamentDetailResponse> fetchTournamentDetail(
+    int tournamentId,
+  ) async {
+    final res = await ApiClient.get(ApiConstants.tournamentDetail(tournamentId));
+    final data = res.data;
+    if (data is Map<String, dynamic>) {
+      return TournamentDetailResponse.fromJson(data);
+    }
+    if (data is Map) {
+      return TournamentDetailResponse.fromJson(Map<String, dynamic>.from(data));
+    }
+    return const TournamentDetailResponse(tournament: null);
   }
 
   static Future<TournamentTeamPlayersResponse> fetchTournamentTeamPlayers(

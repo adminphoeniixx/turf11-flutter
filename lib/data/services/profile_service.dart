@@ -26,6 +26,22 @@ class ProfileService {
     return PlayerProfileResponse.fromJson(_toMap(res.data));
   }
 
+  static Future<PlayerProfileResponse> updateLocation({
+    required double latitude,
+    required double longitude,
+    required String city,
+  }) async {
+    final res = await ApiClient.put(
+      ApiConstants.profile,
+      data: {
+        'latitude': latitude,
+        'longitude': longitude,
+        'city': city,
+      },
+    );
+    return PlayerProfileResponse.fromJson(_toMap(res.data));
+  }
+
   static Map<String, dynamic> _toMap(dynamic data) {
     if (data is Map<String, dynamic>) {
       return data;
