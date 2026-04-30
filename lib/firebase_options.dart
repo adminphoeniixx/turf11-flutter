@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBuzRayKFcFJ3vDdJ0JbNXVboNFDYYR1ME',
-    appId: '1:597499278453:android:d98d51138436d9b9ecf43c',
+    appId: '1:597499278453:android:5f99ded9513efc68ecf43c',
     messagingSenderId: '597499278453',
     projectId: 'turf11-dac3b',
     storageBucket: 'turf11-dac3b.firebasestorage.app',
@@ -60,11 +60,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyB9sI7PM9B140Atc4xR5HR0kd2K0Gsn7oI',
-    appId: '1:597499278453:ios:28550b5f724ac413ecf43c',
+    appId: '1:597499278453:ios:ff963d63137e5346ecf43c',
     messagingSenderId: '597499278453',
     projectId: 'turf11-dac3b',
     storageBucket: 'turf11-dac3b.firebasestorage.app',
-    iosBundleId: 'turf11.book.play',
+    iosBundleId: 'turf11.play.compete',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(

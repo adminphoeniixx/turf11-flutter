@@ -11,6 +11,10 @@ import '../data/models/booking_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 
+const double _compactButtonVerticalPadding = kAppButtonVerticalPadding;
+const double _compactButtonFontSize = kAppButtonFontSize;
+const double _compactActionButtonHeight = kAppButtonHeight;
+
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
 
@@ -39,9 +43,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BackRow(label: 'My Bookings', onBack: () => Navigator.pop(context)),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              padding: const EdgeInsets.fromLTRB(
+                kScreenHorizontalPadding,
+                kScreenTopSpacing,
+                kScreenHorizontalPadding,
+                0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -65,7 +73,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: kScreenSectionSpacing),
                 ],
               ),
             ),
@@ -100,7 +108,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   color: AppColors.green,
                   onRefresh: () => controller.loadBookings(),
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 90),
+                    padding: const EdgeInsets.fromLTRB(
+                      kScreenHorizontalPadding,
+                      0,
+                      kScreenHorizontalPadding,
+                      kScreenListBottomPadding,
+                    ),
                     physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: bookings.length + (controller.hasMoreBookings ? 1 : 0),
                     itemBuilder: (context, index) {
@@ -228,7 +241,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                                 : () => Navigator.of(sheetContext).pop(),
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: AppColors.border),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding: EdgeInsets.symmetric(
+                                vertical: _compactButtonVerticalPadding,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -236,7 +251,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             child: Text(
                               'Keep Booking',
                               style: GoogleFonts.dmSans(
-                                fontSize: 13,
+                                fontSize: _compactButtonFontSize,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.dark,
                               ),
@@ -280,7 +295,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.red,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding: EdgeInsets.symmetric(
+                                vertical: _compactButtonVerticalPadding,
+                              ),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
@@ -300,7 +317,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                                 : Text(
                                     'Cancel Booking',
                                     style: GoogleFonts.dmSans(
-                                      fontSize: 13,
+                                      fontSize: _compactButtonFontSize,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -408,7 +425,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       backgroundColor: AppColors.dark,
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: EdgeInsets.symmetric(
+                        vertical: _compactButtonVerticalPadding,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -416,7 +435,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     child: Text(
                       'Done',
                       style: GoogleFonts.dmSans(
-                        fontSize: 13,
+                        fontSize: _compactButtonFontSize,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -484,6 +503,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     Expanded(
                       child: AppButton(
                         label: 'WhatsApp',
+                        compact: true,
                         onTap: invite.whatsappUrl.isEmpty
                             ? null
                             : () async {
@@ -503,6 +523,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     Expanded(
                       child: AppButton(
                         label: 'Share',
+                        compact: true,
                         isOutline: true,
                         onTap: () => SharePlus.instance.share(
                           ShareParams(text: shareText),
@@ -517,6 +538,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     Expanded(
                       child: AppButton(
                         label: 'Copy Code',
+                        compact: true,
                         isOutline: true,
                         onTap: () async {
                           await Clipboard.setData(ClipboardData(text: invite.code));
@@ -528,6 +550,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     Expanded(
                       child: AppButton(
                         label: 'Copy Link',
+                        compact: true,
                         isOutline: true,
                         onTap: () async {
                           await Clipboard.setData(
@@ -812,83 +835,101 @@ class _BookingCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onInvite,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.dark,
-                      side: const BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    height: _compactActionButtonHeight,
+                    child: OutlinedButton.icon(
+                      onPressed: onInvite,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.dark,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: EdgeInsets.symmetric(
+                          vertical: _compactButtonVerticalPadding,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
-                    ),
-                    icon: const Icon(LucideIcons.share2, size: 16),
-                    label: Text(
-                      'Invite',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                      icon: const Icon(LucideIcons.share2, size: 14),
+                      label: Text(
+                        'Invite',
+                        style: GoogleFonts.dmSans(
+                          fontSize: _compactButtonFontSize,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onPlayers,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.dark,
-                      side: const BorderSide(color: AppColors.border),
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                  child: SizedBox(
+                    height: _compactActionButtonHeight,
+                    child: OutlinedButton.icon(
+                      onPressed: onPlayers,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.dark,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: EdgeInsets.symmetric(
+                          vertical: _compactButtonVerticalPadding,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      icon: const Icon(LucideIcons.users, size: 14),
+                      label: Text(
+                        'Players',
+                        style: GoogleFonts.dmSans(
+                          fontSize: _compactButtonFontSize,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                    icon: const Icon(LucideIcons.users, size: 16),
-                    label: Text(
-                      'Players',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: _compactActionButtonHeight,
+                    child: OutlinedButton.icon(
+                      onPressed: isCanceling ? null : onCancel,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.red,
+                        side: const BorderSide(color: AppColors.red),
+                        padding: EdgeInsets.symmetric(
+                          vertical: _compactButtonVerticalPadding,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      icon: isCanceling
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.red,
+                                ),
+                              ),
+                            )
+                          : const Icon(LucideIcons.xCircle, size: 14),
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          isCanceling ? 'Cancelling' : 'Cancel',
+                          maxLines: 1,
+                          style: GoogleFonts.dmSans(
+                            fontSize: _compactButtonFontSize,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: isCanceling ? null : onCancel,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.red,
-                  side: const BorderSide(color: AppColors.red),
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                icon: isCanceling
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.red,
-                          ),
-                        ),
-                      )
-                    : const Icon(LucideIcons.xCircle, size: 16),
-                label: Text(
-                  isCanceling ? 'Cancelling...' : 'Cancel Booking',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
             ),
           ],
         ],

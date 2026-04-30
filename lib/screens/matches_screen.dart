@@ -24,6 +24,130 @@ class JoinMatchScreen extends StatefulWidget {
   State<JoinMatchScreen> createState() => _JoinMatchScreenState();
 }
 
+class MyMatchesTab extends StatefulWidget {
+  const MyMatchesTab({super.key});
+
+  @override
+  State<MyMatchesTab> createState() => _MyMatchesTabState();
+}
+
+class _MyMatchesTabState extends State<MyMatchesTab> {
+  late final MatchController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.isRegistered<MatchController>()
+        ? Get.find<MatchController>()
+        : Get.put(MatchController());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.loadMyMatches();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            kScreenHorizontalPadding,
+            20,
+            kScreenHorizontalPadding,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'My Matches',
+                style: GoogleFonts.dmSans(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.dark,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'All matches you have created or joined.',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: AppColors.muted,
+                ),
+              ),
+              const SizedBox(height: kScreenBlockSpacing),
+              Expanded(
+                child: Obx(() {
+                  final isLoading = controller.isMyMatchesLoading.value;
+                  final matches = controller.myMatches;
+
+                  if (isLoading && matches.isEmpty) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (matches.isEmpty) {
+                    return const _EmptyState(
+                      title: 'No matches found',
+                      subtitle:
+                          'Once you create or join a match, it will appear here.',
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    color: AppColors.green,
+                    onRefresh: controller.loadMyMatches,
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: matches.length,
+                      itemBuilder: (context, index) {
+                        final match = matches[index];
+                        final isJoined = controller.isMatchJoined(
+                          match.id,
+                          fallback: true,
+                        );
+                        return _MatchCard(
+                          match: match,
+                          actionLabel: 'View Details',
+                          onTap: () => _openDetail(
+                            context,
+                            match.id,
+                            isJoined: isJoined,
+                          ),
+                          onAction: () => _openDetail(
+                            context,
+                            match.id,
+                            isJoined: isJoined,
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openDetail(
+    BuildContext context,
+    int matchId, {
+    required bool isJoined,
+  }) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => MatchDetailScreen(
+          matchId: matchId,
+          initiallyJoined: isJoined,
+        ),
+      ),
+    );
+  }
+}
+
 class _JoinMatchScreenState extends State<JoinMatchScreen> {
   late final MatchController controller;
   final joinCodeController = TextEditingController();
@@ -63,7 +187,12 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
             BackRow(label: 'Create Match', onBack: () => Navigator.pop(context)),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  kScreenHorizontalPadding,
+                  kScreenTopSpacing,
+                  kScreenHorizontalPadding,
+                  0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -87,56 +216,68 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                         ),
                       );
                     }),
-                    const SizedBox(height: 16),
-                    ChipRow(
-                      const ['Nearby', 'My Matches'],
-                      initial: selectedTab,
-                      onChanged: (index) => setState(() => selectedTab = index),
-                    ),
-                    const SizedBox(height: 10),
-                    if (selectedTab == 0) ...[
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: GestureDetector(
-                          onTap: _openMatchRadiusFilter,
-                          child: Container(
+                    const SizedBox(height: kScreenBlockSpacing),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ChipRow(
+                            const ['Nearby', 'My Matches'],
+                            initial: selectedTab,
+                            equalWidth: true,
+                            spacing: 6,
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
+                              horizontal: 8,
                               vertical: 7,
                             ),
-                            decoration: BoxDecoration(
-                              color: AppColors.white,
-                              borderRadius: BorderRadius.circular(30),
-                              border: Border.all(
-                                color: AppColors.border,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  LucideIcons.slidersHorizontal,
-                                  size: 14,
-                                  color: AppColors.dark,
-                                ),
-                                const SizedBox(width: 5),
-                                Obx(() {
-                                  return Text(
-                                    '${controller.nearbyMatchesRadiusKm.value} km',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.dark,
-                                    ),
-                                  );
-                                }),
-                              ],
-                            ),
+                            fontSize: 10,
+                            onChanged: (index) =>
+                                setState(() => selectedTab = index),
                           ),
                         ),
-                      ),
-                    ],
+                        if (selectedTab == 0) ...[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: _openMatchRadiusFilter,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 7,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(
+                                  color: AppColors.border,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    LucideIcons.slidersHorizontal,
+                                    size: 13,
+                                    color: AppColors.dark,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Obx(() {
+                                    return Text(
+                                      '${controller.nearbyMatchesRadiusKm.value} km',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.dark,
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: kScreenSectionSpacing),
                     Expanded(
                       child: Obx(() {
                         final isLoading = selectedTab == 0
@@ -451,6 +592,13 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                       ChipRow(
                         const ['Cricket', 'Football', 'Badminton'],
                         initial: sportIndex,
+                        equalWidth: true,
+                        spacing: 6,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 7,
+                        ),
+                        fontSize: 10,
                         onChanged: (value) => setState(() {
                           sportIndex = value;
                           selectedSlotIds.clear();
@@ -872,6 +1020,13 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                       ChipRow(
                         const ['5v5', '8v8', '11v11'],
                         initial: formatIndex,
+                        equalWidth: true,
+                        spacing: 6,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 7,
+                        ),
+                        fontSize: 10,
                         onChanged: (value) => setState(() => formatIndex = value),
                       ),
                       const SectionLabel('Skill Level'),
@@ -923,6 +1078,13 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                       ChipRow(
                         const ['Split', 'Host Pays'],
                         initial: feeModeIndex,
+                        equalWidth: true,
+                        spacing: 6,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 7,
+                        ),
+                        fontSize: 10,
                         onChanged: (value) => setState(() => feeModeIndex = value),
                       ),
                       const SectionLabel('Description'),
@@ -2405,28 +2567,6 @@ class _MatchCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  onTap: onAction,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 11,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _actionColor(),
-                      borderRadius: BorderRadius.circular(26),
-                    ),
-                    child: Text(
-                      actionLabel,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
             if (_displayPlayerLabels.isNotEmpty) ...[
@@ -2464,34 +2604,63 @@ class _MatchCard extends StatelessWidget {
                 ),
               ),
             ),
-            if (secondaryActionLabel != null && onSecondaryAction != null) ...[
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  onTap: onSecondaryAction,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Text(
-                      secondaryActionLabel!,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.dark,
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: onAction,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: kAppButtonHorizontalPadding,
+                        vertical: kAppButtonVerticalPadding,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _actionColor(),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Text(
+                        actionLabel,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.dmSans(
+                          fontSize: kAppButtonFontSize,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+                if (secondaryActionLabel != null && onSecondaryAction != null) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: onSecondaryAction,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: kAppButtonHorizontalPadding,
+                          vertical: kAppButtonVerticalPadding,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Text(
+                          secondaryActionLabel!,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.dmSans(
+                            fontSize: kAppButtonFontSize,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.dark,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
       ),
@@ -2611,8 +2780,8 @@ class _PlayerBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 40,
-      height: 40,
+      width: 34,
+      height: 34,
       decoration: BoxDecoration(
         color: filled ? AppColors.greenLt : AppColors.white,
         shape: BoxShape.circle,
@@ -2625,7 +2794,7 @@ class _PlayerBubble extends StatelessWidget {
         child: Text(
           label,
           style: GoogleFonts.dmSans(
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: filled ? FontWeight.w700 : FontWeight.w500,
             color: filled ? AppColors.green : AppColors.muted2,
           ),

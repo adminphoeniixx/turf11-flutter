@@ -72,7 +72,12 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  kScreenTopSpacing,
+                  16,
+                  100,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -152,7 +157,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         },
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: kScreenSectionSpacing),
                     Text(
                       'Time Slots',
                       style: GoogleFonts.dmSans(
@@ -274,7 +279,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         }).toList(),
                       );
                     }),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: kScreenBlockSpacing),
                     Text(
                       'No. of People',
                       style: GoogleFonts.dmSans(
@@ -329,9 +334,9 @@ class _BookingScreenState extends State<BookingScreen> {
                         );
                       },
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: kScreenBlockSpacing),
                     _detailSections(),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: kScreenBlockSpacing),
                     _summaryCard(selectedPlayers),
                     Obx(
                       () => AppButton(
@@ -349,7 +354,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                 ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: kScreenSectionSpacing),
                     AppButton(
                       label: 'Create Match for this Slot',
                       isOutline: true,
@@ -578,8 +583,10 @@ class _BookingScreenState extends State<BookingScreen> {
                 _heroStat(
                   LucideIcons.star,
                   turf != null
-                      ? '${turf.ratingLabel} ${turf.reviewLabel}'
-                      : 'New',
+                      ? [turf.ratingLabel, turf.reviewLabel]
+                          .where((part) => part.trim().isNotEmpty)
+                          .join(' ')
+                      : '',
                 ),
                 _heroStat(
                   LucideIcons.users,

@@ -23,12 +23,17 @@ class LoginScreen extends StatelessWidget {
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+          padding: const EdgeInsets.fromLTRB(
+            kScreenHorizontalPadding,
+            10,
+            kScreenHorizontalPadding,
+            kScreenBottomSpacing,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 🔥 SAME UI (no change)
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -42,7 +47,7 @@ class LoginScreen extends StatelessWidget {
                   child: const AppLogo(width: 170),
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: kScreenBlockSpacing),
 
               Text('Welcome back.',
                   style: GoogleFonts.dmSans(
@@ -57,7 +62,7 @@ class LoginScreen extends StatelessWidget {
                   style:
                       GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted)),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: kScreenBlockSpacing),
 
               // 🔥 SAME MOBILE FIELD UI
               _MobileField(controller: mobileController),
@@ -68,8 +73,6 @@ class LoginScreen extends StatelessWidget {
               Obx(
                 () => AppButton(
                   label: controller.isLoading.value ? 'Sending OTP...' : 'Send OTP',
-                  trailingIcon:
-                      controller.isLoading.value ? null : Icons.arrow_forward,
                   onTap: controller.isLoading.value
                       ? null
                       : () async {
@@ -119,7 +122,7 @@ class LoginScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: kScreenBlockSpacing),
 
               Center(
                 child: GestureDetector(
@@ -191,6 +194,9 @@ class _MobileField extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: '9876543210',
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
                 filled: false,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 13),

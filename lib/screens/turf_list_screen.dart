@@ -62,7 +62,12 @@ class _TurfListScreenState extends State<TurfListScreen> {
               BackRow(label: 'Turfs', onBack: () => Navigator.pop(context)),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  kScreenHorizontalPadding,
+                  kScreenTopSpacing,
+                  kScreenHorizontalPadding,
+                  0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -139,7 +144,7 @@ class _TurfListScreenState extends State<TurfListScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: kScreenSectionSpacing),
                     // SearchBar(
                     //   hint: 'Search turf name, area...',
                     //   controller: _searchController,
@@ -148,9 +153,16 @@ class _TurfListScreenState extends State<TurfListScreen> {
                     ChipRow(
                       _sports,
                       initial: _sportIndex,
+                      equalWidth: true,
+                      spacing: 6,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 7,
+                      ),
+                      fontSize: 10,
                       onChanged: (index) => setState(() => _sportIndex = index),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: kScreenSectionSpacing),
                     Expanded(
                       child: Obx(() {
                         final isLoading = controller.isLoading.value;
@@ -405,39 +417,13 @@ class _TurfListCard extends StatelessWidget {
             ClipRRect(
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(22)),
-              child: Container(
-                height: 100,
-                color: const Color(0xFF2D5A1B),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 10,
-                      left: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: turf.isAvailable
-                              ? Colors.white
-                              : const Color(0xFFFDECEA),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          turf.isAvailable ? turf.formatLabel : 'Unavailable',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w700,
-                            color: turf.isAvailable
-                                ? AppColors.green
-                                : AppColors.red,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              child: TurfFieldBanner(
+                badgeText: turf.isAvailable ? turf.formatLabel : 'Unavailable',
+                badgeColor: turf.isAvailable
+                    ? Colors.white.withOpacity(0.9)
+                    : const Color(0xFFFDECEA),
+                badgeTextColor:
+                    turf.isAvailable ? AppColors.green : AppColors.red,
               ),
             ),
             Padding(
@@ -495,11 +481,15 @@ class _TurfListCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        '${turf.ratingLabel} ${turf.reviewLabel}',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 10, color: AppColors.green),
-                      ),
+                      if ([turf.ratingLabel, turf.reviewLabel]
+                          .any((part) => part.trim().isNotEmpty))
+                        Text(
+                          [turf.ratingLabel, turf.reviewLabel]
+                              .where((part) => part.trim().isNotEmpty)
+                              .join(' '),
+                          style: GoogleFonts.dmSans(
+                              fontSize: 10, color: AppColors.green),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -580,7 +570,10 @@ class _TurfListCard extends StatelessWidget {
 
   Widget _pill(String label, Color bg, Color fg) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: kAppButtonHorizontalPadding,
+        vertical: kAppButtonVerticalPadding,
+      ),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(30),
@@ -591,7 +584,7 @@ class _TurfListCard extends StatelessWidget {
       child: Text(
         label,
         style: GoogleFonts.dmSans(
-          fontSize: 10,
+          fontSize: kAppButtonFontSize,
           fontWeight: FontWeight.w600,
           color: fg,
         ),

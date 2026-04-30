@@ -30,9 +30,9 @@ class _TournamentScreenState extends State<TournamentScreen> {
 
   static const List<String> _statusTabs = <String>[
     'Open',
-    'Canceled',
-    'Completed',
     'Ongoing',
+    'Completed',
+    'Cancelled',
   ];
 
   @override
@@ -68,7 +68,12 @@ class _TournamentScreenState extends State<TournamentScreen> {
             if (widget.showBackButton)
               BackRow(label: 'Tournaments', onBack: () => Navigator.pop(context)),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+              padding: const EdgeInsets.fromLTRB(
+                kScreenHorizontalPadding,
+                12,
+                kScreenHorizontalPadding,
+                kScreenTitleGap,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -91,10 +96,19 @@ class _TournamentScreenState extends State<TournamentScreen> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              padding: const EdgeInsets.fromLTRB(
+                kScreenHorizontalPadding,
+                kScreenSectionSpacing,
+                kScreenHorizontalPadding,
+                kScreenSectionSpacing,
+              ),
               child: ChipRow(
                 _statusTabs,
                 initial: _statusIndex,
+                equalWidth: true,
+                spacing: 6,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                fontSize: 10,
                 onChanged: (index) {
                   setState(() => _statusIndex = index);
                   _tournamentController.loadTournaments(
@@ -111,7 +125,12 @@ class _TournamentScreenState extends State<TournamentScreen> {
                     status: _apiStatusForIndex(_statusIndex),
                   ),
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
+                    padding: const EdgeInsets.fromLTRB(
+                      kScreenHorizontalPadding,
+                      0,
+                      kScreenHorizontalPadding,
+                      80,
+                    ),
                     children: [
                       if (_tournamentController.isLoading.value &&
                           tournaments.isEmpty)
@@ -162,6 +181,7 @@ class _TournamentScreenState extends State<TournamentScreen> {
                               label: _tournamentController.isLoadMoreLoading.value
                                   ? 'Loading...'
                                   : 'Load More',
+                              compact: true,
                               isOutline: true,
                               onTap: _tournamentController.isLoadMoreLoading.value
                                   ? null
@@ -187,7 +207,7 @@ class _TournamentScreenState extends State<TournamentScreen> {
     switch (_statusTabs[index].toLowerCase()) {
       case 'open':
         return 'open';
-      case 'canceled':
+      case 'cancelled':
         return 'cancelled';
       case 'completed':
         return 'completed';
@@ -275,6 +295,7 @@ class _TournamentScreenState extends State<TournamentScreen> {
                         const SizedBox(height: 14),
                         AppButton(
                           label: 'Open Teams',
+                          compact: true,
                           onTap: () {
                             Navigator.of(sheetContext).pop();
                             Navigator.of(context).push(
@@ -446,7 +467,7 @@ class _TournamentCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 AppButton(
                   label: tournament.isFull ? 'Tournament Full' : 'Register Team',
-                  trailingIcon: tournament.isFull ? null : Icons.arrow_forward,
+                  compact: true,
                   color: tournament.isFull ? AppColors.muted2 : null,
                   onTap: tournament.isFull ? null : onRegister,
                 ),
@@ -456,6 +477,7 @@ class _TournamentCard extends StatelessWidget {
                     Expanded(
                       child: AppButton(
                         label: 'Details',
+                        compact: true,
                         isOutline: true,
                         onTap: onDetails,
                       ),
@@ -463,25 +485,29 @@ class _TournamentCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: AppButton(
+                        label: 'Teams',
+                        compact: true,
+                        isOutline: true,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => TournamentTeamsScreen(
+                              tournamentId: tournament.id,
+                              tournamentName: tournament.name,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: AppButton(
                         label: 'Rewards',
+                        compact: true,
                         isOutline: true,
                         onTap: () => _showRewardsSheet(context),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                AppButton(
-                  label: 'Teams',
-                  isOutline: true,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => TournamentTeamsScreen(
-                        tournamentId: tournament.id,
-                        tournamentName: tournament.name,
-                      ),
-                    ),
-                  ),
                 ),
               ],
             ),
@@ -870,6 +896,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                         ),
                         AppButton(
                           label: 'View All Teams',
+                          compact: true,
                           isOutline: true,
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(
@@ -1481,6 +1508,7 @@ class _RegisteredTeamCard extends StatelessWidget {
           const SizedBox(height: 12),
           AppButton(
             label: 'View Players',
+            compact: true,
             isOutline: true,
             onTap: onViewPlayers,
           ),
@@ -1936,6 +1964,7 @@ class _TournamentTeamTile extends StatelessWidget {
                   : isLoading
                       ? 'Please wait'
                       : 'Select',
+              compact: true,
               color: isSelected ? AppColors.muted2 : null,
               onTap: isSelected || isLoading ? null : onTap,
             ),

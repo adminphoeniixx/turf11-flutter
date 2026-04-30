@@ -3,6 +3,20 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../theme/app_theme.dart';
 
+const double kAppButtonHeight = 34;
+const double kAppButtonHorizontalPadding = 14;
+const double kAppButtonVerticalPadding = 7;
+const double kAppButtonFontSize = 11;
+const double kAppButtonIconSize = 14;
+const double kAppButtonTrailingSize = 24;
+const double kScreenHorizontalPadding = 20;
+const double kScreenTopSpacing = 8;
+const double kScreenTitleGap = 4;
+const double kScreenSectionSpacing = 12;
+const double kScreenBlockSpacing = 16;
+const double kScreenBottomSpacing = 30;
+const double kScreenListBottomPadding = 90;
+
 class AppLogo extends StatelessWidget {
   final double width;
   final double? height;
@@ -33,6 +47,7 @@ class AppButton extends StatelessWidget {
   final Color? color;
   final bool isOutline;
   final IconData? trailingIcon;
+  final bool compact;
 
   const AppButton({
     super.key,
@@ -41,6 +56,7 @@ class AppButton extends StatelessWidget {
     this.color,
     this.isOutline = false,
     this.trailingIcon,
+    this.compact = false,
   });
 
   @override
@@ -54,11 +70,16 @@ class AppButton extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             side: BorderSide(color: bg, width: 1.5),
             shape: const StadiumBorder(),
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            minimumSize: const Size(0, kAppButtonHeight),
+            padding: const EdgeInsets.symmetric(
+              vertical: kAppButtonVerticalPadding,
+            ),
           ),
           child: Text(label,
               style: GoogleFonts.dmSans(
-                  fontSize: 13, fontWeight: FontWeight.w600, color: bg)),
+                  fontSize: kAppButtonFontSize,
+                  fontWeight: FontWeight.w600,
+                  color: bg)),
         ),
       );
     }
@@ -70,7 +91,10 @@ class AppButton extends StatelessWidget {
           backgroundColor: bg,
           foregroundColor: Colors.white,
           shape: const StadiumBorder(),
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          minimumSize: const Size(0, kAppButtonHeight),
+          padding: const EdgeInsets.symmetric(
+            vertical: kAppButtonVerticalPadding,
+          ),
           elevation: 0,
         ),
         child: Row(
@@ -78,19 +102,24 @@ class AppButton extends StatelessWidget {
               ? MainAxisAlignment.spaceBetween
               : MainAxisAlignment.center,
           children: [
-            if (trailingIcon != null) const SizedBox(width: 38),
+            if (trailingIcon != null)
+              const SizedBox(width: kAppButtonTrailingSize),
             Text(label,
                 style: GoogleFonts.dmSans(
-                    fontSize: 14,
+                    fontSize: kAppButtonFontSize,
                     fontWeight: FontWeight.w700,
                     color: Colors.white)),
             if (trailingIcon != null)
               Container(
-                width: 38,
-                height: 38,
+                width: kAppButtonTrailingSize,
+                height: kAppButtonTrailingSize,
                 decoration: const BoxDecoration(
                     color: AppColors.green, shape: BoxShape.circle),
-                child: Icon(trailingIcon, color: Colors.white, size: 18),
+                child: Icon(
+                  trailingIcon,
+                  color: Colors.white,
+                  size: kAppButtonIconSize,
+                ),
               ),
           ],
         ),
@@ -102,8 +131,14 @@ class AppButton extends StatelessWidget {
 // ─── BACK ROW ─────────────────────────────────────────────────────────────────
 class BackRow extends StatelessWidget {
   final String label;
-  final VoidCallback onBack;
-  const BackRow({super.key, required this.label, required this.onBack});
+  final VoidCallback? onBack;
+  final bool showBackArrow;
+  const BackRow({
+    super.key,
+    required this.label,
+    this.onBack,
+    this.showBackArrow = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -111,27 +146,32 @@ class BackRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: onBack,
-            child: Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.09),
-                      blurRadius: 16,
-                      offset: const Offset(0, 2))
-                ],
+          if (showBackArrow) ...[
+            GestureDetector(
+              onTap: onBack,
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.09),
+                        blurRadius: 16,
+                        offset: const Offset(0, 2))
+                  ],
+                ),
+                child: const Icon(
+                  LucideIcons.arrowLeft,
+                  size: 16,
+                  color: AppColors.dark,
+                ),
               ),
-              child:
-                  const Icon(LucideIcons.arrowLeft, size: 16, color: AppColors.dark),
             ),
-          ),
-          const SizedBox(width: 10),
+            const SizedBox(width: 10),
+          ],
           Text(label,
               style: GoogleFonts.dmSans(
                   fontSize: 12, color: AppColors.muted)),
@@ -149,7 +189,7 @@ class SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 18, bottom: 10),
+      padding: const EdgeInsets.only(top: kScreenBlockSpacing, bottom: 8),
       child: Text(text.toUpperCase(),
           style: GoogleFonts.dmSans(
               fontSize: 10,
@@ -204,7 +244,20 @@ class ChipRow extends StatefulWidget {
   final List<String> options;
   final int initial;
   final ValueChanged<int>? onChanged;
-  const ChipRow(this.options, {super.key, this.initial = 0, this.onChanged});
+  final bool equalWidth;
+  final double spacing;
+  final EdgeInsetsGeometry padding;
+  final double fontSize;
+  const ChipRow(
+    this.options, {
+    super.key,
+    this.initial = 0,
+    this.onChanged,
+    this.equalWidth = false,
+    this.spacing = 8,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    this.fontSize = 12,
+  });
 
   @override
   State<ChipRow> createState() => _ChipRowState();
@@ -221,32 +274,58 @@ class _ChipRowState extends State<ChipRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: List.generate(widget.options.length, (i) {
-        final on = i == _sel;
-        return GestureDetector(
-          onTap: () {
-            setState(() => _sel = i);
-            widget.onChanged?.call(i);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: on ? AppColors.dark : AppColors.white,
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(
-                  color: on ? AppColors.dark : AppColors.border, width: 1.5),
+    final chips = List.generate(widget.options.length, (i) {
+      final on = i == _sel;
+      final chip = GestureDetector(
+        onTap: () {
+          setState(() => _sel = i);
+          widget.onChanged?.call(i);
+        },
+        child: Container(
+          width: double.infinity,
+          padding: widget.padding,
+          decoration: BoxDecoration(
+            color: on ? AppColors.dark : AppColors.white,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: on ? AppColors.dark : AppColors.border,
+              width: 1.5,
             ),
-            child: Text(widget.options[i],
-                style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: on ? Colors.white : AppColors.muted)),
           ),
-        );
-      }),
+          child: Text(
+            widget.options[i],
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dmSans(
+              fontSize: widget.fontSize,
+              fontWeight: FontWeight.w500,
+              color: on ? Colors.white : AppColors.muted,
+            ),
+          ),
+        ),
+      );
+
+      if (!widget.equalWidth) {
+        return chip;
+      }
+
+      return Expanded(child: chip);
+    });
+
+    if (widget.equalWidth) {
+      return Row(
+        children: List.generate(chips.length * 2 - 1, (index) {
+          if (index.isOdd) {
+            return SizedBox(width: widget.spacing);
+          }
+          return chips[index ~/ 2];
+        }),
+      );
+    }
+
+    return Wrap(
+      spacing: widget.spacing,
+      runSpacing: widget.spacing,
+      children: chips,
     );
   }
 }
@@ -622,12 +701,14 @@ class TurfFieldBanner extends StatelessWidget {
   final String? badgeText;
   final Color? badgeColor;
   final Color? badgeTextColor;
+  final double height;
 
   const TurfFieldBanner({
     super.key,
     this.badgeText,
     this.badgeColor,
     this.badgeTextColor,
+    this.height = 120,
   });
 
   @override
@@ -636,55 +717,77 @@ class TurfFieldBanner extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: SizedBox(
         width: double.infinity,
-        height: 120,
+        height: height,
         child: Stack(
           children: [
             // Green field base
             Container(color: const Color(0xFF2D5A1B)),
             // Pitch strips
-            Row(children: [
-              _strip(44, 0.4),
-              _strip(44, 0),
-              _strip(44, 0.4),
-              _strip(44, 0),
-              _strip(44, 0.4),
-            ]),
+            Positioned.fill(
+              child: Row(
+                children: List.generate(
+                  7,
+                  (index) => Expanded(
+                    child: ColoredBox(
+                      color: const Color(0xFF336622).withOpacity(
+                        index.isEven ? 0.4 : 0,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
             // Crease
-            Positioned(
-              left: 153,
-              top: 0,
-              bottom: 0,
-              width: 44,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFC8A96E),
-                  borderRadius: BorderRadius.circular(3),
+            Align(
+              alignment: Alignment.center,
+              child: FractionallySizedBox(
+                widthFactor: 0.16,
+                heightFactor: 1,
+                child: Container(
+                  constraints: const BoxConstraints(
+                    minWidth: 42,
+                    maxWidth: 58,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC8A96E),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                 ),
               ),
             ),
             // Overlay
-            Container(color: Colors.black.withOpacity(0.2)),
-            // Brand text
+            Positioned.fill(
+              child: ColoredBox(color: Colors.black.withOpacity(0.2)),
+            ),
+            // Centered logo
             Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    height: 38,
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      child: const AppLogo(width: 120),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(
+                      height: 38,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: AppLogo(width: 124),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Book. Play. Compete.',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 10,
-                      color: Colors.white.withOpacity(0.8),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Book. Play. Compete.',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 10,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             // Badge
@@ -710,13 +813,6 @@ class TurfFieldBanner extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _strip(double width, double opacity) {
-    return Container(
-      width: width,
-      color: const Color(0xFF336622).withOpacity(opacity),
     );
   }
 }

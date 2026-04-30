@@ -42,6 +42,44 @@
           "other_platform_oauth_client": []
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:597499278453:android:8e2154c9c2756a89ecf43c",
+        "android_client_info": {
+          "package_name": "turf11.partner.book"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuzRayKFcFJ3vDdJ0JbNXVboNFDYYR1ME"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:597499278453:android:5f99ded9513efc68ecf43c",
+        "android_client_info": {
+          "package_name": "turf11.play.compete"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuzRayKFcFJ3vDdJ0JbNXVboNFDYYR1ME"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
     }
   ],
   "configuration_version": "1"

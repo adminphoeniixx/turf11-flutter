@@ -45,10 +45,10 @@ class TurfModel {
     this.operatingHours,
   });
 
-  String get priceLabel => hasPrice ? 'Rs ${_formatAmount(pricePerHour)}/hr' : 'Price on request';
-  String get ratingLabel => rating <= 0 ? 'New' : rating.toStringAsFixed(1);
+  String get priceLabel => hasPrice ? 'Rs ${_formatAmount(pricePerHour)}/hr' : '';
+  String get ratingLabel => rating <= 0 ? '' : rating.toStringAsFixed(1);
   bool get hasPrice => pricePerHour > 0;
-  String get reviewLabel => totalReviews > 0 ? '($totalReviews)' : '(0)';
+  String get reviewLabel => totalReviews > 0 ? '($totalReviews)' : '';
   String get formatLabel => format.trim().isEmpty ? 'Standard' : format;
 
   factory TurfModel.fromJson(Map<String, dynamic> json) {

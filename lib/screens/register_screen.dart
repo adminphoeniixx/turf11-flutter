@@ -57,7 +57,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             BackRow(label: 'Register', onBack: () => Navigator.pop(context)),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
+                padding: const EdgeInsets.fromLTRB(
+                  kScreenHorizontalPadding,
+                  kScreenTopSpacing,
+                  kScreenHorizontalPadding,
+                  kScreenBottomSpacing,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -73,7 +78,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         style: GoogleFonts.dmSans(
                             fontSize: 12, color: AppColors.muted)),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: kScreenBlockSpacing),
 
                     // ✅ Fields with controller
                     _field(
@@ -129,7 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       }),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: kScreenBlockSpacing),
 
                     // ✅ API CALL BUTTON
                     Obx(

@@ -184,8 +184,6 @@ class _OtpScreenState extends State<OtpScreen> {
                             : (widget.isLogin
                                 ? 'Verify & Login'
                                 : 'Verify & Register'),
-                        trailingIcon:
-                            controller.isLoading.value ? null : Icons.arrow_forward,
                         onTap: controller.isLoading.value
                             ? null
                             : () async {

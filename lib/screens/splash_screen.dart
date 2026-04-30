@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../core/session_bootstrap_service.dart';
 import '../core/storage_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
@@ -55,6 +56,10 @@ class _SplashScreenState extends State<SplashScreen>
     }
 
     if (hasToken) {
+      await SessionBootstrapService.bootstrapSession(forceRefresh: true);
+      if (!mounted || _isRouting) {
+        return;
+      }
       _goHome();
       return;
     }

@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "turf11.book.play"
+    namespace = "turf11.play.compete"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "turf11.book.play"
+        applicationId = "turf11.play.compete"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = maxOf(flutter.minSdkVersion, 19)

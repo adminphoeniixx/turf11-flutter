@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../core/session_bootstrap_service.dart';
 import '../core/location_service.dart';
 import '../controllers/profile_controller.dart';
 import '../controllers/match_controller.dart';
@@ -20,6 +21,7 @@ import '../widgets/shared_widgets.dart';
 import 'booking_screen.dart';
 import 'matches_screen.dart';
 import 'my_bookings_screen.dart';
+import 'notifications_screen.dart';
 import 'profile_screen.dart';
 import 'teams_screen.dart';
 import 'tournament_screen.dart';
@@ -41,8 +43,16 @@ class _HomeScreenState extends State<HomeScreen> {
     TurfListScreen(),
     TournamentScreen(),
     MyBookingsScreen(),
-    ProfileScreen(),
+    MyMatchesTab(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SessionBootstrapService.bootstrapSession();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -224,9 +234,9 @@ class _HomeContentState extends State<_HomeContent> {
                 top: false,
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
-                    20,
+                    kScreenHorizontalPadding,
                     12,
-                    20,
+                    kScreenHorizontalPadding,
                     24 + MediaQuery.of(sheetContext).viewInsets.bottom,
                   ),
                   child: Column(
@@ -260,7 +270,7 @@ class _HomeContentState extends State<_HomeContent> {
                           color: AppColors.muted,
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: kScreenSectionSpacing),
                       AppButton(
                         label: isFetching
                             ? 'Fetching Location...'
@@ -409,7 +419,12 @@ class _HomeContentState extends State<_HomeContent> {
       child: CustomScrollView(
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+            padding: const EdgeInsets.fromLTRB(
+              kScreenHorizontalPadding,
+              0,
+              kScreenHorizontalPadding,
+              100,
+            ),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 const SizedBox(height: 8),
@@ -466,49 +481,75 @@ class _HomeContentState extends State<_HomeContent> {
                           ),
                         ],
                       ),
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                const ProfileScreen(showBackButton: true),
-                          ),
-                        ),
-                        child: Stack(
-                          children: [
-                            AppAvatar(
-                              initials: initials,
-                              size: 44,
-                              bg: AppColors.green,
-                              fg: Colors.white,
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationsScreen(),
+                              ),
                             ),
-                            Positioned(
-                              top: 0,
-                              right: 0,
-                              child: Container(
-                                width: 14,
-                                height: 14,
-                                decoration: BoxDecoration(
-                                  color: AppColors.green,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppColors.bg,
-                                    width: 2,
-                                  ),
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              margin: const EdgeInsets.only(right: 10),
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: const Icon(
+                                LucideIcons.bell,
+                                size: 18,
+                                color: AppColors.dark,
+                              ),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const ProfileScreen(showBackButton: true),
+                              ),
+                            ),
+                            child: Stack(
+                              children: [
+                                AppAvatar(
+                                  initials: initials,
+                                  size: 44,
+                                  bg: AppColors.green,
+                                  fg: Colors.white,
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    initials.substring(0, 1),
-                                    style: const TextStyle(
-                                      fontSize: 7,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: Container(
+                                    width: 14,
+                                    height: 14,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.green,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: AppColors.bg,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        initials.substring(0, 1),
+                                        style: const TextStyle(
+                                          fontSize: 7,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ],
                   );
@@ -715,7 +756,7 @@ class _HomeContentState extends State<_HomeContent> {
                         ),
                       ),
                       child: Text(
-                        'See all ->',
+                        'See all',
                         style: GoogleFonts.dmSans(
                           fontSize: 12,
                           color: AppColors.green,
@@ -792,7 +833,7 @@ class _HomeContentState extends State<_HomeContent> {
                         ),
                       ),
                       child: Text(
-                        'See all ->',
+                        'See all',
                         style: GoogleFonts.dmSans(
                           fontSize: 12,
                           color: AppColors.green,
@@ -903,17 +944,17 @@ class _HomeContentState extends State<_HomeContent> {
                               ),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 11,
+                                  horizontal: kAppButtonHorizontalPadding,
+                                  vertical: kAppButtonVerticalPadding,
                                 ),
                                 decoration: BoxDecoration(
                                   color: AppColors.green,
-                                  borderRadius: BorderRadius.circular(26),
+                                  borderRadius: BorderRadius.circular(30),
                                 ),
                                 child: Text(
                                   isJoined ? 'View Details' : 'Join Match',
                                   style: GoogleFonts.dmSans(
-                                    fontSize: 12,
+                                    fontSize: kAppButtonFontSize,
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white,
                                   ),
@@ -929,8 +970,8 @@ class _HomeContentState extends State<_HomeContent> {
                           children: [
                             ...displayPlayerLabels.map(
                               (label) => Container(
-                                width: 40,
-                                height: 40,
+                                width: 34,
+                                height: 34,
                                 decoration: BoxDecoration(
                                   color: AppColors.greenLt,
                                   shape: BoxShape.circle,
@@ -943,7 +984,7 @@ class _HomeContentState extends State<_HomeContent> {
                                   child: Text(
                                     label,
                                     style: GoogleFonts.dmSans(
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.w700,
                                       color: AppColors.green,
                                     ),
@@ -953,8 +994,8 @@ class _HomeContentState extends State<_HomeContent> {
                             ),
                             if (remainingPlayersCount > 0)
                               Container(
-                                width: 40,
-                                height: 40,
+                                width: 34,
+                                height: 34,
                                 decoration: BoxDecoration(
                                   color: AppColors.white,
                                   shape: BoxShape.circle,
@@ -967,7 +1008,7 @@ class _HomeContentState extends State<_HomeContent> {
                                   child: Text(
                                     '+$remainingPlayersCount',
                                     style: GoogleFonts.dmSans(
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.w500,
                                       color: AppColors.muted2,
                                     ),
@@ -1015,7 +1056,7 @@ class _HomeContentState extends State<_HomeContent> {
                         ),
                       ),
                       child: Text(
-                        'See all ->',
+                        'See all',
                         style: GoogleFonts.dmSans(
                           fontSize: 12,
                           color: AppColors.green,
@@ -1332,11 +1373,17 @@ class _TurfCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '${turf.ratingLabel} ${turf.reviewLabel}',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12, color: AppColors.green),
-                      ),
+                      if ([turf.ratingLabel, turf.reviewLabel]
+                          .any((part) => part.trim().isNotEmpty))
+                        Text(
+                          [turf.ratingLabel, turf.reviewLabel]
+                              .where((part) => part.trim().isNotEmpty)
+                              .join(' '),
+                          style: GoogleFonts.dmSans(
+                              fontSize: 12, color: AppColors.green),
+                        )
+                      else
+                        const SizedBox.shrink(),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 7),
