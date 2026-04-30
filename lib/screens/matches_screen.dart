@@ -109,6 +109,7 @@ class _MyMatchesTabState extends State<MyMatchesTab> {
                         return _MatchCard(
                           match: match,
                           actionLabel: 'View Details',
+                          alignActionRight: true,
                           onTap: () => _openDetail(
                             context,
                             match.id,
@@ -320,6 +321,7 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                                 actionLabel: selectedTab == 0
                                     ? (isJoined ? 'View Details' : 'Join Match')
                                     : 'View Details',
+                                alignActionRight: selectedTab == 1,
                                 secondaryActionLabel:
                                     selectedTab == 0 && !isJoined
                                         ? 'Join Code'
@@ -1033,6 +1035,13 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                       ChipRow(
                         const ['All', 'Beginner', 'Intermediate', 'Advanced'],
                         initial: skillIndex,
+                        equalWidth: true,
+                        spacing: 5,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 7,
+                        ),
+                        fontSize: 9,
                         onChanged: (value) => setState(() => skillIndex = value),
                       ),
                       Row(
@@ -1109,9 +1118,6 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                           label: controller.isCreateLoading.value
                               ? 'Creating...'
                               : 'Confirm Match',
-                          trailingIcon: controller.isCreateLoading.value
-                              ? null
-                              : Icons.arrow_forward,
                           onTap:
                               controller.isCreateLoading.value ? null : _submit,
                         ),
@@ -1983,9 +1989,6 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                                     ? 'Leave Match'
                                     : 'Join Match',
                             color: isJoined ? AppColors.red : AppColors.dark,
-                            trailingIcon: controller.isJoinLoading.value
-                                ? null
-                                : Icons.arrow_forward,
                             onTap: controller.isJoinLoading.value
                                 ? null
                                 : () async {
@@ -2505,6 +2508,7 @@ class _MatchCard extends StatelessWidget {
   final MatchModel match;
   final String actionLabel;
   final String? secondaryActionLabel;
+  final bool alignActionRight;
   final VoidCallback onTap;
   final VoidCallback onAction;
   final VoidCallback? onSecondaryAction;
@@ -2513,6 +2517,7 @@ class _MatchCard extends StatelessWidget {
     required this.match,
     required this.actionLabel,
     this.secondaryActionLabel,
+    this.alignActionRight = false,
     required this.onTap,
     required this.onAction,
     this.onSecondaryAction,
@@ -2607,8 +2612,10 @@ class _MatchCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: GestureDetector(
+                if (alignActionRight && secondaryActionLabel == null)
+                  const Spacer(),
+                if (alignActionRight && secondaryActionLabel == null)
+                  GestureDetector(
                     onTap: onAction,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -2629,8 +2636,32 @@ class _MatchCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                  )
+                else
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: onAction,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: kAppButtonHorizontalPadding,
+                          vertical: kAppButtonVerticalPadding,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _actionColor(),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          actionLabel,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.dmSans(
+                            fontSize: kAppButtonFontSize,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
                 if (secondaryActionLabel != null && onSecondaryAction != null) ...[
                   const SizedBox(width: 8),
                   Expanded(

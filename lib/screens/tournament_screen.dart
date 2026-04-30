@@ -1506,11 +1506,28 @@ class _RegisteredTeamCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          AppButton(
-            label: 'View Players',
-            compact: true,
-            isOutline: true,
-            onTap: onViewPlayers,
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton(
+              onPressed: onViewPlayers,
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.dark, width: 1.5),
+                shape: const StadiumBorder(),
+                minimumSize: const Size(0, kAppButtonHeight),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: kAppButtonHorizontalPadding,
+                  vertical: kAppButtonVerticalPadding,
+                ),
+              ),
+              child: Text(
+                'View Players',
+                style: GoogleFonts.dmSans(
+                  fontSize: kAppButtonFontSize,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.dark,
+                ),
+              ),
+            ),
           ),
         ],
       ),

@@ -239,106 +239,154 @@ class ProfileScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        AppButton(
-                          label: 'Edit Profile',
-                          onTap: () => _showEditProfileSheet(
-                            context,
-                            profileController,
-                            profile,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        AppButton(
-                          label: 'Log Out',
-                          color: AppColors.red,
-                          isOutline: true,
-                          onTap: () {
-                            final controller =
-                                Get.isRegistered<AuthController>()
-                                    ? Get.find<AuthController>()
-                                    : Get.put(AuthController());
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            alignment: WrapAlignment.end,
+                            children: [
+                              OutlinedButton(
+                                onPressed: () {
+                                  final controller =
+                                      Get.isRegistered<AuthController>()
+                                          ? Get.find<AuthController>()
+                                          : Get.put(AuthController());
 
-                            Get.dialog(
-                              Dialog(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Log Out',
-                                        style: GoogleFonts.dmSans(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppColors.dark,
-                                        ),
+                                  Get.dialog(
+                                    Dialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(24),
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Are you sure you want to logout from this account?',
-                                        style: GoogleFonts.dmSans(
-                                          fontSize: 13,
-                                          color: AppColors.muted,
-                                          height: 1.5,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
-                                      Obx(
-                                        () => Row(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(20),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Expanded(
-                                              child: AppButton(
-                                                label: 'Cancel',
-                                                isOutline: true,
-                                                onTap:
-                                                    controller.isLoading.value
-                                                        ? null
-                                                        : () => Get.back(),
+                                            Text(
+                                              'Log Out',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppColors.dark,
                                               ),
                                             ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: AppButton(
-                                                label:
-                                                    controller.isLoading.value
-                                                        ? 'Logging out...'
-                                                        : 'Logout',
-                                                color: AppColors.red,
-                                                onTap: controller
-                                                        .isLoading.value
-                                                    ? null
-                                                    : () async {
-                                                        final success =
-                                                            await controller
-                                                                .logout();
-                                                        if (!success) {
-                                                          return;
-                                                        }
-                                                        if (Get.isDialogOpen ??
-                                                            false) {
-                                                          Get.back();
-                                                        }
-                                                        Get.offAll(
-                                                          () => LoginScreen(),
-                                                        );
-                                                      },
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Are you sure you want to logout from this account?',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 13,
+                                                color: AppColors.muted,
+                                                height: 1.5,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 20),
+                                            Obx(
+                                              () => Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: AppButton(
+                                                      label: 'Cancel',
+                                                      isOutline: true,
+                                                      onTap: controller
+                                                              .isLoading.value
+                                                          ? null
+                                                          : () => Get.back(),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: AppButton(
+                                                      label: controller
+                                                              .isLoading.value
+                                                          ? 'Logging out...'
+                                                          : 'Logout',
+                                                      color: AppColors.red,
+                                                      onTap: controller
+                                                              .isLoading.value
+                                                          ? null
+                                                          : () async {
+                                                              final success =
+                                                                  await controller
+                                                                      .logout();
+                                                              if (!success) {
+                                                                return;
+                                                              }
+                                                              if (Get.isDialogOpen ??
+                                                                  false) {
+                                                                Get.back();
+                                                              }
+                                                              Get.offAll(
+                                                                () =>
+                                                                    LoginScreen(),
+                                                              );
+                                                            },
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                    ],
+                                    ),
+                                  );
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                    color: AppColors.red,
+                                    width: 1.4,
+                                  ),
+                                  shape: const StadiumBorder(),
+                                  minimumSize:
+                                      const Size(0, kAppButtonHeight),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: kAppButtonVerticalPadding,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Log Out',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: kAppButtonFontSize,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.red,
                                   ),
                                 ),
                               ),
-                            );
-                          },
+                              ElevatedButton(
+                                onPressed: () => _showEditProfileSheet(
+                                  context,
+                                  profileController,
+                                  profile,
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.dark,
+                                  foregroundColor: Colors.white,
+                                  shape: const StadiumBorder(),
+                                  minimumSize:
+                                      const Size(0, kAppButtonHeight),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: kAppButtonVerticalPadding,
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: Text(
+                                  'Edit Profile',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: kAppButtonFontSize,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
