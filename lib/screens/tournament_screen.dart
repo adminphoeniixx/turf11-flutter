@@ -66,7 +66,8 @@ class _TournamentScreenState extends State<TournamentScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.showBackButton)
-              BackRow(label: 'Tournaments', onBack: () => Navigator.pop(context)),
+              BackRow(
+                  label: 'Tournaments', onBack: () => Navigator.pop(context)),
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 kScreenHorizontalPadding,
@@ -107,8 +108,9 @@ class _TournamentScreenState extends State<TournamentScreen> {
                 initial: _statusIndex,
                 equalWidth: true,
                 spacing: 6,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 fontSize: 10,
+                height: kAppCompactButtonHeight,
                 onChanged: (index) {
                   setState(() => _statusIndex = index);
                   _tournamentController.loadTournaments(
@@ -178,16 +180,19 @@ class _TournamentScreenState extends State<TournamentScreen> {
                           padding: const EdgeInsets.only(top: 4),
                           child: Obx(
                             () => AppButton(
-                              label: _tournamentController.isLoadMoreLoading.value
-                                  ? 'Loading...'
-                                  : 'Load More',
+                              label:
+                                  _tournamentController.isLoadMoreLoading.value
+                                      ? 'Loading...'
+                                      : 'Load More',
                               compact: true,
                               isOutline: true,
-                              onTap: _tournamentController.isLoadMoreLoading.value
+                              onTap: _tournamentController
+                                      .isLoadMoreLoading.value
                                   ? null
                                   : () => _tournamentController.loadTournaments(
                                         loadMore: true,
-                                        status: _apiStatusForIndex(_statusIndex),
+                                        status:
+                                            _apiStatusForIndex(_statusIndex),
                                       ),
                             ),
                           ),
@@ -221,12 +226,11 @@ class _TournamentScreenState extends State<TournamentScreen> {
   void _openTournamentDetails(TournamentModel tournament) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder:
-            (_) => TournamentDetailScreen(
-              tournamentId: tournament.id,
-              tournamentName: tournament.name,
-              fallbackTournament: tournament,
-            ),
+        builder: (_) => TournamentDetailScreen(
+          tournamentId: tournament.id,
+          tournamentName: tournament.name,
+          fallbackTournament: tournament,
+        ),
       ),
     );
   }
@@ -307,19 +311,19 @@ class _TournamentScreenState extends State<TournamentScreen> {
                           },
                         ),
                       ] else ...[
-                      ...teams.map(
-                        (team) => _TournamentTeamTile(
-                          team: team,
-                          isSelected: _isAlreadyRegisteredTeam(team),
-                          isLoading:
-                              _teamController.registeringTournamentTeamId.value ==
-                                  team.id,
-                          onTap: () async {
-                            if (_isAlreadyRegisteredTeam(team)) {
-                              return;
-                            }
-                            final result = await _teamController
-                                .registerTeamForTournament(
+                        ...teams.map(
+                          (team) => _TournamentTeamTile(
+                            team: team,
+                            isSelected: _isAlreadyRegisteredTeam(team),
+                            isLoading: _teamController
+                                    .registeringTournamentTeamId.value ==
+                                team.id,
+                            onTap: () async {
+                              if (_isAlreadyRegisteredTeam(team)) {
+                                return;
+                              }
+                              final result = await _teamController
+                                  .registerTeamForTournament(
                                 tournamentId: tournamentId,
                                 playerTeamId: team.id,
                               );
@@ -465,11 +469,15 @@ class _TournamentCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 AppProgress(tournament.registrationProgress),
                 const SizedBox(height: 12),
-                AppButton(
-                  label: tournament.isFull ? 'Tournament Full' : 'Register Team',
-                  compact: true,
-                  color: tournament.isFull ? AppColors.muted2 : null,
-                  onTap: tournament.isFull ? null : onRegister,
+                SizedBox(
+                  height: 36,
+                  child: AppButton(
+                    label:
+                        tournament.isFull ? 'Tournament Full' : 'Register Team',
+                    compact: true,
+                    color: tournament.isFull ? AppColors.muted2 : null,
+                    onTap: tournament.isFull ? null : onRegister,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -742,16 +750,14 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
               child: Obx(() {
                 final detail =
                     _tournamentController.selectedTournamentDetail.value ??
-                    TournamentDetailModel.fromTournament(
-                      widget.fallbackTournament,
-                      teams: _tournamentController.registeredTeams,
-                    );
-                final teams =
-                    detail.teams.isNotEmpty
-                        ? detail.teams
-                        : _tournamentController.registeredTeams;
-                final isLoading =
-                    _tournamentController.isDetailLoading.value &&
+                        TournamentDetailModel.fromTournament(
+                          widget.fallbackTournament,
+                          teams: _tournamentController.registeredTeams,
+                        );
+                final teams = detail.teams.isNotEmpty
+                    ? detail.teams
+                    : _tournamentController.registeredTeams;
+                final isLoading = _tournamentController.isDetailLoading.value &&
                     detail.description.isEmpty &&
                     detail.schedule.isEmpty &&
                     teams.isEmpty;
@@ -774,7 +780,8 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 90),
                     children: [
                       _TournamentDetailHero(detail: detail),
-                      if (_tournamentController.detailErrorMessage.value.isNotEmpty)
+                      if (_tournamentController
+                          .detailErrorMessage.value.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 12),
                           child: SmallCard(
@@ -851,14 +858,14 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                         SmallCard(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children:
-                                detail.terms
-                                    .map((term) => _termRow(term))
-                                    .toList(),
+                            children: detail.terms
+                                .map((term) => _termRow(term))
+                                .toList(),
                           ),
                         ),
                       const SectionLabel('Teams'),
-                      if (_tournamentController.isTeamsLoading.value && teams.isEmpty)
+                      if (_tournamentController.isTeamsLoading.value &&
+                          teams.isEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 20),
                           child: Center(child: CircularProgressIndicator()),
@@ -875,36 +882,39 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                         )
                       else ...[
                         ...teams.take(4).map(
-                          (team) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _RegisteredTeamCard(
-                              team: team,
-                              isMyTeam: _isMyTeam(team, _teamController.teams),
-                              onViewPlayers:
-                                  () => Navigator.of(context).push(
+                              (team) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _RegisteredTeamCard(
+                                  team: team,
+                                  isMyTeam:
+                                      _isMyTeam(team, _teamController.teams),
+                                  onViewPlayers: () =>
+                                      Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder:
-                                          (_) => TournamentTeamPlayersScreen(
-                                            tournamentId: widget.tournamentId,
-                                            teamId: team.id,
-                                            teamName: team.teamName,
-                                          ),
+                                      builder: (_) =>
+                                          TournamentTeamPlayersScreen(
+                                        tournamentId: widget.tournamentId,
+                                        teamId: team.id,
+                                        teamName: team.teamName,
+                                      ),
                                     ),
                                   ),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        AppButton(
-                          label: 'View All Teams',
-                          compact: true,
-                          isOutline: true,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder:
-                                  (_) => TournamentTeamsScreen(
-                                    tournamentId: widget.tournamentId,
-                                    tournamentName: widget.tournamentName,
-                                  ),
+                        SizedBox(
+                          height: 38,
+                          child: AppButton(
+                            label: 'View All Teams',
+                            compact: true,
+                            isOutline: true,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => TournamentTeamsScreen(
+                                  tournamentId: widget.tournamentId,
+                                  tournamentName: widget.tournamentName,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -1043,7 +1053,8 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
     }
     return normalized
         .split('_')
-        .map((part) => part.isEmpty ? part : part[0].toUpperCase() + part.substring(1))
+        .map((part) =>
+            part.isEmpty ? part : part[0].toUpperCase() + part.substring(1))
         .join(' ');
   }
 }
@@ -1196,7 +1207,8 @@ class _TournamentTeamsScreenState extends State<TournamentTeamsScreen> {
                 final summary =
                     _tournamentController.selectedTournamentSummary.value;
 
-                if (_tournamentController.isTeamsLoading.value && teams.isEmpty) {
+                if (_tournamentController.isTeamsLoading.value &&
+                    teams.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
@@ -1209,11 +1221,13 @@ class _TournamentTeamsScreenState extends State<TournamentTeamsScreen> {
                     children: [
                       _TournamentTeamsHero(
                         title: summary?.name ?? widget.tournamentName,
-                        registeredTeams: summary?.registeredTeams ?? teams.length,
+                        registeredTeams:
+                            summary?.registeredTeams ?? teams.length,
                         maxTeams: summary?.maxTeams ?? 0,
                       ),
                       const SizedBox(height: 8),
-                      if (_tournamentController.teamsErrorMessage.value.isNotEmpty &&
+                      if (_tournamentController
+                              .teamsErrorMessage.value.isNotEmpty &&
                           teams.isEmpty)
                         SmallCard(
                           child: Text(
@@ -1299,7 +1313,8 @@ class _TournamentTeamsScreenState extends State<TournamentTeamsScreen> {
     List<TeamModel> myTeams,
   ) {
     final tournamentName = team.teamName.trim().toLowerCase();
-    return myTeams.any((myTeam) => myTeam.name.trim().toLowerCase() == tournamentName);
+    return myTeams
+        .any((myTeam) => myTeam.name.trim().toLowerCase() == tournamentName);
   }
 }
 
@@ -1513,7 +1528,8 @@ class _RegisteredTeamCard extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: AppColors.dark, width: 1.5),
                 shape: const StadiumBorder(),
-                minimumSize: const Size(0, kAppButtonHeight),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 padding: const EdgeInsets.symmetric(
                   horizontal: kAppButtonHorizontalPadding,
                   vertical: kAppButtonVerticalPadding,
@@ -1593,7 +1609,8 @@ class _TournamentTeamPlayersScreenState
             Expanded(
               child: Obx(() {
                 final players = _tournamentController.tournamentTeamPlayers;
-                final team = _tournamentController.selectedTournamentTeamSummary.value;
+                final team =
+                    _tournamentController.selectedTournamentTeamSummary.value;
 
                 if (_tournamentController.isPlayersLoading.value &&
                     players.isEmpty) {
@@ -1601,7 +1618,8 @@ class _TournamentTeamPlayersScreenState
                 }
 
                 return RefreshIndicator(
-                  onRefresh: () => _tournamentController.loadTournamentTeamPlayers(
+                  onRefresh: () =>
+                      _tournamentController.loadTournamentTeamPlayers(
                     widget.tournamentId,
                     widget.teamId,
                   ),
@@ -1616,7 +1634,8 @@ class _TournamentTeamPlayersScreenState
                         count: players.length,
                       ),
                       const SizedBox(height: 8),
-                      if (_tournamentController.playersErrorMessage.value.isNotEmpty &&
+                      if (_tournamentController
+                              .playersErrorMessage.value.isNotEmpty &&
                           players.isEmpty)
                         SmallCard(
                           child: Text(
@@ -1638,7 +1657,8 @@ class _TournamentTeamPlayersScreenState
                           ),
                         )
                       else
-                        ...players.map((player) => _TournamentPlayerCard(player: player)),
+                        ...players.map(
+                            (player) => _TournamentPlayerCard(player: player)),
                     ],
                   ),
                 );
@@ -1719,7 +1739,8 @@ class _TournamentPlayersHero extends StatelessWidget {
     }
     return normalized
         .split('_')
-        .map((part) => part.isEmpty ? part : part[0].toUpperCase() + part.substring(1))
+        .map((part) =>
+            part.isEmpty ? part : part[0].toUpperCase() + part.substring(1))
         .join(' ');
   }
 }

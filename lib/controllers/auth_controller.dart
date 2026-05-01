@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 
 import '../core/session_bootstrap_service.dart';
@@ -66,7 +68,7 @@ class AuthController extends GetxController {
 
       final res = await AuthService.login(phone, otp);
       await StorageService.saveToken(res.token);
-      await SessionBootstrapService.bootstrapSession(forceRefresh: true);
+      unawaited(SessionBootstrapService.bootstrapSession(forceRefresh: true));
 
       Get.snackbar("Success", res.message.isNotEmpty ? res.message : "Login successful");
       return true;
@@ -85,7 +87,7 @@ class AuthController extends GetxController {
 
       final res = await AuthService.register(data);
       await StorageService.saveToken(res.token);
-      await SessionBootstrapService.bootstrapSession(forceRefresh: true);
+      unawaited(SessionBootstrapService.bootstrapSession(forceRefresh: true));
 
       Get.snackbar("Success", res.message.isNotEmpty ? res.message : "Registered successfully");
       return true;

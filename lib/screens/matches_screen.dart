@@ -185,7 +185,7 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BackRow(label: 'Create Match', onBack: () => Navigator.pop(context)),
+            BackRow(label: 'Join Match', onBack: () => Navigator.pop(context)),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
@@ -237,41 +237,44 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                         ),
                         if (selectedTab == 0) ...[
                           const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: _openMatchRadiusFilter,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 7,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                borderRadius: BorderRadius.circular(30),
-                                border: Border.all(
-                                  color: AppColors.border,
-                                  width: 1.5,
+                          SizedBox(
+                            height: kAppButtonHeight,
+                            child: GestureDetector(
+                              onTap: _openMatchRadiusFilter,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    LucideIcons.slidersHorizontal,
-                                    size: 13,
-                                    color: AppColors.dark,
+                                decoration: BoxDecoration(
+                                  color: AppColors.white,
+                                  borderRadius: BorderRadius.circular(30),
+                                  border: Border.all(
+                                    color: AppColors.border,
+                                    width: 1.5,
                                   ),
-                                  const SizedBox(width: 4),
-                                  Obx(() {
-                                    return Text(
-                                      '${controller.nearbyMatchesRadiusKm.value} km',
-                                      style: GoogleFonts.dmSans(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.dark,
-                                      ),
-                                    );
-                                  }),
-                                ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      LucideIcons.slidersHorizontal,
+                                      size: 13,
+                                      color: AppColors.dark,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Obx(() {
+                                      return Text(
+                                        '${controller.nearbyMatchesRadiusKm.value} km',
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.dark,
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -570,7 +573,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BackRow(label: 'Join Match', onBack: () => Navigator.pop(context)),
+            BackRow(label: 'Create Match', onBack: () => Navigator.pop(context)),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
@@ -598,9 +601,10 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                         spacing: 6,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
-                          vertical: 7,
+                          vertical: 5,
                         ),
                         fontSize: 10,
+                        height: kAppCompactButtonHeight,
                         onChanged: (value) => setState(() {
                           sportIndex = value;
                           selectedSlotIds.clear();
@@ -1026,9 +1030,10 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                         spacing: 6,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
-                          vertical: 7,
+                          vertical: 5,
                         ),
                         fontSize: 10,
+                        height: kAppCompactButtonHeight,
                         onChanged: (value) => setState(() => formatIndex = value),
                       ),
                       const SectionLabel('Skill Level'),
@@ -1039,9 +1044,10 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                         spacing: 5,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 4,
-                          vertical: 7,
+                          vertical: 5,
                         ),
                         fontSize: 9,
+                        height: kAppCompactButtonHeight,
                         onChanged: (value) => setState(() => skillIndex = value),
                       ),
                       Row(
@@ -1091,9 +1097,10 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                         spacing: 6,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
-                          vertical: 7,
+                          vertical: 5,
                         ),
                         fontSize: 10,
+                        height: kAppCompactButtonHeight,
                         onChanged: (value) => setState(() => feeModeIndex = value),
                       ),
                       const SectionLabel('Description'),
@@ -1233,6 +1240,17 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
         : amount.toStringAsFixed(2);
   }
 
+  String _distanceLabel(TurfModel turf) {
+    final distance = turf.distanceKm;
+    if (distance == null || distance <= 0) {
+      return '';
+    }
+    final value = distance.toDouble();
+    final formatted =
+        value < 10 ? value.toStringAsFixed(1) : value.toStringAsFixed(0);
+    return '$formatted km away';
+  }
+
   List<TurfModel> get _selectableTurfs {
     final activeSport = sports[sportIndex];
     final mergedTurfs = <TurfModel>[
@@ -1310,6 +1328,8 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     }
 
     final parts = <String>[
+      if (_distanceLabel(selectedTurf).isNotEmpty)
+        _distanceLabel(selectedTurf),
       if (selectedTurf.city.trim().isNotEmpty) selectedTurf.city,
       if (selectedTurf.address.trim().isNotEmpty) selectedTurf.address,
     ];
@@ -1401,6 +1421,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                       itemBuilder: (context, index) {
                         final turf = turfs[index];
                         final isSelected = turf.id == selectedTurfId;
+                        final distanceLabel = _distanceLabel(turf);
                         final locationParts = <String>[
                           if (turf.city.trim().isNotEmpty) turf.city,
                           if (turf.address.trim().isNotEmpty) turf.address,
@@ -1430,13 +1451,44 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        turf.name,
-                                        style: GoogleFonts.dmSans(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.dark,
-                                        ),
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              turf.name,
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.dark,
+                                              ),
+                                            ),
+                                          ),
+                                          if (distanceLabel.isNotEmpty) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 4,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.greenLt,
+                                                borderRadius:
+                                                    BorderRadius.circular(30),
+                                              ),
+                                              child: Text(
+                                                distanceLabel,
+                                                style: GoogleFonts.dmSans(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.green,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                       if (locationParts.isNotEmpty) ...[
                                         const SizedBox(height: 4),

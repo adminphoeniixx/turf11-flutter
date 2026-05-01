@@ -265,7 +265,7 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
               GestureDetector(
                 onTap: _openTransactionHistorySheet,
                 child: _tag(
-                  'Views Transaction',
+                  'Views Transactions',
                   bgColor: AppColors.greenLt,
                   textColor: AppColors.green,
                 ),

@@ -5,6 +5,8 @@ import '../core/location_service.dart';
 import '../data/models/match_action_model.dart';
 import '../data/models/match_model.dart';
 import '../data/services/match_service.dart';
+import '../widgets/wallet_feedback.dart';
+import 'wallet_controller.dart';
 
 class MatchController extends GetxController {
   final nearbyMatches = <MatchModel>[].obs;
@@ -113,10 +115,21 @@ class MatchController extends GetxController {
         }
       }
       setMatchJoinedState(match.id, true);
-      Get.snackbar("Success", successMessage);
-      await refreshAll();
+      await Future.wait([
+        refreshAll(),
+        _refreshWalletState(),
+      ]);
+      await WalletFeedback.showPaymentSuccess(
+        title: 'Match Created',
+        message: successMessage,
+      );
       return match;
     } catch (e) {
+      final message = _readableError(e);
+      if (WalletFeedback.isInsufficientWalletMessage(message)) {
+        await WalletFeedback.showLowBalance(message: message);
+        return null;
+      }
       _logError('createMatch', e);
       return null;
     } finally {
@@ -133,8 +146,16 @@ class MatchController extends GetxController {
       isJoinLoading.value = true;
       final message = await MatchService.joinMatch(matchId);
       setMatchJoinedState(matchId, true);
-      Get.snackbar("Success", message);
-      await _refreshAfterMutation(matchId);
+      await Future.wait([
+        _refreshAfterMutation(matchId),
+        _refreshWalletState(),
+      ]);
+      await WalletFeedback.showPaymentSuccess(
+        title: 'Match Joined',
+        message: message.isNotEmpty
+            ? message
+            : 'Payment completed and you joined this match.',
+      );
       return true;
     } catch (e) {
       final message = _readableError(e);
@@ -143,6 +164,10 @@ class MatchController extends GetxController {
         Get.snackbar("Info", message);
         await _refreshAfterMutation(matchId);
         return true;
+      }
+      if (WalletFeedback.isInsufficientWalletMessage(message)) {
+        await WalletFeedback.showLowBalance(message: message);
+        return false;
       }
       _logError('joinMatch', e);
       return false;
@@ -175,8 +200,16 @@ class MatchController extends GetxController {
     try {
       isJoinLoading.value = true;
       final message = await MatchService.joinMatchByCode(code);
-      Get.snackbar("Success", message);
-      await refreshAll();
+      await Future.wait([
+        refreshAll(),
+        _refreshWalletState(),
+      ]);
+      await WalletFeedback.showPaymentSuccess(
+        title: 'Match Joined',
+        message: message.isNotEmpty
+            ? message
+            : 'Payment completed and you joined this match.',
+      );
       return true;
     } catch (e) {
       final message = _readableError(e);
@@ -184,6 +217,10 @@ class MatchController extends GetxController {
         Get.snackbar("Info", message);
         await refreshAll();
         return true;
+      }
+      if (WalletFeedback.isInsufficientWalletMessage(message)) {
+        await WalletFeedback.showLowBalance(message: message);
+        return false;
       }
       _logError('joinMatchWithCode', e);
       return false;
@@ -336,6 +373,17 @@ class MatchController extends GetxController {
       return;
     }
     joinedStateOverrides[matchId] = isJoined;
+  }
+
+  Future<void> _refreshWalletState() async {
+    final walletController = Get.isRegistered<WalletController>()
+        ? Get.find<WalletController>()
+        : Get.put(WalletController());
+
+    await Future.wait([
+      walletController.loadWallet(),
+      walletController.loadTransactions(),
+    ]);
   }
 
   String _readableError(Object error) {

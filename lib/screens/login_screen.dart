@@ -35,16 +35,14 @@ class LoginScreen extends StatelessWidget {
               // 🔥 SAME UI (no change)
               const SizedBox(height: 20),
               Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 18,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Image.asset(
+                    'assets/images/app_icon.png',
+                    width: 170,
+                    height: 170,
+                    fit: BoxFit.cover,
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.dark,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const AppLogo(width: 170),
                 ),
               ),
               const SizedBox(height: kScreenBlockSpacing),
@@ -73,6 +71,7 @@ class LoginScreen extends StatelessWidget {
               Obx(
                 () => AppButton(
                   label: controller.isLoading.value ? 'Sending OTP...' : 'Send OTP',
+                  large: true,
                   onTap: controller.isLoading.value
                       ? null
                       : () async {

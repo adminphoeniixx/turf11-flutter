@@ -16,6 +16,22 @@ class AppLocation {
 class LocationService {
   static const fallbackLat = 28.4595;
   static const fallbackLng = 77.0266;
+  static Future<LocationPermission>? _permissionRequest;
+
+  static Future<LocationPermission> ensureLocationPermission() {
+    _permissionRequest ??= _resolveLocationPermission().whenComplete(() {
+      _permissionRequest = null;
+    });
+    return _permissionRequest!;
+  }
+
+  static Future<void> warmUpLocationPermission() async {
+    try {
+      await ensureLocationPermission();
+    } catch (error) {
+      debugPrint('[LocationService] Permission warm-up failed: $error');
+    }
+  }
 
   static Future<AppLocation> getCurrentLocation() async {
     final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -23,11 +39,7 @@ class LocationService {
       throw Exception('Location service is disabled.');
     }
 
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-
+    final permission = await ensureLocationPermission();
     if (permission == LocationPermission.denied) {
       throw Exception('Location permission denied.');
     }
@@ -43,6 +55,7 @@ class LocationService {
       position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
         ),
       );
     } catch (_) {
@@ -78,6 +91,14 @@ class LocationService {
 
   static Future<bool> openAppSettings() {
     return Geolocator.openAppSettings();
+  }
+
+  static Future<LocationPermission> _resolveLocationPermission() async {
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    return permission;
   }
 
   static AppLocation _fallback() {

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../controllers/booking_controller.dart';
@@ -96,7 +97,16 @@ class SessionBootstrapService {
         teamController.loadTeams(),
     ];
 
-    await Future.wait(tasks);
+    await Future.wait(tasks.map(_guardTask));
+  }
+
+  static Future<void> _guardTask(Future<void> task) async {
+    try {
+      await task;
+    } catch (error, stackTrace) {
+      debugPrint('[SessionBootstrapService] Bootstrap task failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   static T _ensureController<T extends GetxController>(T Function() create) {

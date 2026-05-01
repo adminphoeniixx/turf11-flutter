@@ -296,7 +296,7 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
       return;
     }
 
-      final paymentId = response.paymentId;
+    final paymentId = response.paymentId;
     final signature = response.signature;
     final orderId = response.orderId ?? order.orderId;
 
@@ -315,7 +315,11 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
         signature: signature,
       );
       _pendingOrder = null;
-      Get.snackbar('Success', message);
+      await _showTopupSuccessSheet(
+        message.isNotEmpty
+            ? message
+            : 'Your wallet has been recharged successfully.',
+      );
     } catch (e) {
       Get.snackbar('Verification failed', _readableError(e));
     }
@@ -330,6 +334,71 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
   void _handleExternalWallet(ExternalWalletResponse response) {
     final walletName = response.walletName ?? 'External wallet';
     Get.snackbar('External wallet', '$walletName selected.');
+  }
+
+  Future<void> _showTopupSuccessSheet(String message) async {
+    if (!mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppColors.greenLt,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    LucideIcons.checkCircle2,
+                    color: AppColors.green,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Wallet Recharged',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  message,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: AppColors.muted,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AppButton(
+                  label: 'Done',
+                  onTap: () => Navigator.of(sheetContext).pop(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   int _selectedAmount() {
@@ -390,7 +459,7 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
               GestureDetector(
                 onTap: _openTransactionHistorySheet,
                 child: _tag(
-                  'View Transaction',
+                  'View Transactions',
                   bgColor: AppColors.greenLt,
                   textColor: AppColors.green,
                 ),

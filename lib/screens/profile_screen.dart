@@ -247,8 +247,10 @@ class ProfileScreen extends StatelessWidget {
                             runSpacing: 10,
                             alignment: WrapAlignment.end,
                             children: [
-                              OutlinedButton(
-                                onPressed: () {
+                              SizedBox(
+                                height: kAppButtonHeight,
+                                child: OutlinedButton(
+                                  onPressed: () {
                                   final controller =
                                       Get.isRegistered<AuthController>()
                                           ? Get.find<AuthController>()
@@ -335,53 +337,57 @@ class ProfileScreen extends StatelessWidget {
                                       ),
                                     ),
                                   );
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(
-                                    color: AppColors.red,
-                                    width: 1.4,
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(
+                                      color: AppColors.red,
+                                      width: 1.4,
+                                    ),
+                                    shape: const StadiumBorder(),
+                                    minimumSize:
+                                        const Size(0, kAppButtonHeight),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: kAppButtonVerticalPadding,
+                                    ),
                                   ),
-                                  shape: const StadiumBorder(),
-                                  minimumSize:
-                                      const Size(0, kAppButtonHeight),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                    vertical: kAppButtonVerticalPadding,
-                                  ),
-                                ),
-                                child: Text(
-                                  'Log Out',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: kAppButtonFontSize,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.red,
+                                  child: Text(
+                                    'Log Out',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: kAppButtonFontSize,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.red,
+                                    ),
                                   ),
                                 ),
                               ),
-                              ElevatedButton(
-                                onPressed: () => _showEditProfileSheet(
-                                  context,
-                                  profileController,
-                                  profile,
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.dark,
-                                  foregroundColor: Colors.white,
-                                  shape: const StadiumBorder(),
-                                  minimumSize:
-                                      const Size(0, kAppButtonHeight),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: kAppButtonVerticalPadding,
+                              SizedBox(
+                                height: kAppButtonHeight,
+                                child: ElevatedButton(
+                                  onPressed: () => _showEditProfileSheet(
+                                    context,
+                                    profileController,
+                                    profile,
                                   ),
-                                  elevation: 0,
-                                ),
-                                child: Text(
-                                  'Edit Profile',
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: kAppButtonFontSize,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.dark,
+                                    foregroundColor: Colors.white,
+                                    shape: const StadiumBorder(),
+                                    minimumSize:
+                                        const Size(0, kAppButtonHeight),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: kAppButtonVerticalPadding,
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: Text(
+                                    'Edit Profile',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: kAppButtonFontSize,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),

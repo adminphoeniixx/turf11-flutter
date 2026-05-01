@@ -10,6 +10,7 @@ class BookingModel {
   final num amount;
   final String bookingStatus;
   final String paymentStatus;
+  final bool canCancel;
 
   const BookingModel({
     required this.id,
@@ -23,6 +24,7 @@ class BookingModel {
     required this.amount,
     required this.bookingStatus,
     required this.paymentStatus,
+    required this.canCancel,
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class BookingModel {
       amount: _readNum(json['amount']),
       bookingStatus: (json['booking_status'] ?? '').toString(),
       paymentStatus: (json['payment_status'] ?? '').toString(),
+      canCancel: _readBool(json['can_cancel']),
     );
   }
 

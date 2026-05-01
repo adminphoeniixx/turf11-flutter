@@ -10,9 +10,9 @@ import '../data/models/booking_create_model.dart';
 import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../widgets/wallet_feedback.dart';
 import 'matches_screen.dart';
 import 'my_bookings_screen.dart';
-import 'wallet_razorpay_screen.dart';
 
 class BookingScreen extends StatefulWidget {
   final int turfId;
@@ -420,21 +420,32 @@ class _BookingScreenState extends State<BookingScreen> {
     }
 
     if (result.success) {
-      Get.snackbar(
-        'Success',
-        result.message.isNotEmpty
+      await WalletFeedback.showPaymentSuccess(
+        context: context,
+        title: 'Booking Confirmed',
+        message: result.message.isNotEmpty
             ? result.message
-            : 'Booking confirmed successfully.',
-      );
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+            : 'Payment completed and your booking is confirmed.',
+        onDone: () {
+          if (!mounted) {
+            return;
+          }
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MyBookingsScreen()),
+          );
+        },
       );
       return;
     }
 
     if (result.hasInsufficientWallet ||
-        result.message.toLowerCase().contains('insufficient wallet balance')) {
-      await _showInsufficientWalletDialog(context, result);
+        WalletFeedback.isInsufficientWalletMessage(result.message)) {
+      await WalletFeedback.showLowBalance(
+        context: context,
+        message: result.message,
+        walletBalance: result.walletBalance,
+        requiredAmount: result.requiredAmount,
+      );
       return;
     }
 
@@ -443,65 +454,6 @@ class _BookingScreenState extends State<BookingScreen> {
       result.message.isNotEmpty
           ? result.message
           : 'Unable to confirm booking right now.',
-    );
-  }
-
-  Future<void> _showInsufficientWalletDialog(
-    BuildContext context,
-    BookingCreateResult result,
-  ) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          backgroundColor: AppColors.white,
-          title: Text(
-            'Wallet Balance Low',
-            style: GoogleFonts.dmSans(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.dark,
-            ),
-          ),
-          content: Text(
-            result.message.isNotEmpty
-                ? result.message
-                : 'Please top up your wallet to continue.',
-            style: GoogleFonts.dmSans(
-              fontSize: 12,
-              color: AppColors.muted,
-              height: 1.5,
-            ),
-          ),
-          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
-          actions: [
-            Column(
-              children: [
-                AppButton(
-                  label: 'Top Up Wallet',
-                  onTap: () {
-                    Navigator.of(dialogContext).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const WalletRazorpayScreen(),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                AppButton(
-                  label: 'Maybe Later',
-                  isOutline: true,
-                  onTap: () => Navigator.of(dialogContext).pop(),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
     );
   }
 

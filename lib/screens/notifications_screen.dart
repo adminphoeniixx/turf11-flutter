@@ -72,6 +72,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            BackRow(
+                label: 'Notification', onBack: () => Navigator.pop(context)),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: Column(

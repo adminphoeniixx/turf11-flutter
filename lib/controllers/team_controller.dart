@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 
 import '../data/models/team_model.dart';
 import '../data/services/team_service.dart';
+import '../widgets/wallet_feedback.dart';
+import 'wallet_controller.dart';
 
 class TeamController extends GetxController {
   final teams = <TeamModel>[].obs;
@@ -153,12 +155,29 @@ class TeamController extends GetxController {
         tournamentId: tournamentId,
         playerTeamId: playerTeamId,
       );
-      if (result.message.isNotEmpty) {
-        Get.snackbar(result.success ? 'Success' : 'Error', result.message);
+      if (result.success) {
+        await _refreshWalletState();
+        await WalletFeedback.showPaymentSuccess(
+          title: 'Tournament Registered',
+          message: result.message.isNotEmpty
+              ? result.message
+              : 'Payment completed and your team is registered.',
+        );
+      } else if (WalletFeedback.isInsufficientWalletMessage(result.message)) {
+        await WalletFeedback.showLowBalance(message: result.message);
+      } else if (result.message.isNotEmpty) {
+        Get.snackbar('Error', result.message);
       }
       return result;
     } catch (e) {
       final message = _readableError(e);
+      if (WalletFeedback.isInsufficientWalletMessage(message)) {
+        await WalletFeedback.showLowBalance(message: message);
+        return TeamTournamentRegistrationResult(
+          success: false,
+          message: message,
+        );
+      }
       Get.snackbar('Error', message);
       return TeamTournamentRegistrationResult(
         success: false,
@@ -189,6 +208,17 @@ class TeamController extends GetxController {
     } finally {
       isSaving.value = false;
     }
+  }
+
+  Future<void> _refreshWalletState() async {
+    final walletController = Get.isRegistered<WalletController>()
+        ? Get.find<WalletController>()
+        : Get.put(WalletController());
+
+    await Future.wait([
+      walletController.loadWallet(),
+      walletController.loadTransactions(),
+    ]);
   }
 
   String _readableError(Object error) {

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../core/location_service.dart';
 import '../core/session_bootstrap_service.dart';
 import '../core/storage_service.dart';
 import '../theme/app_theme.dart';
@@ -35,6 +38,7 @@ class _SplashScreenState extends State<SplashScreen>
     _slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
     _ctrl.forward();
+    unawaited(LocationService.warmUpLocationPermission());
     _bootstrapSession();
   }
 
@@ -114,7 +118,10 @@ class _SplashScreenState extends State<SplashScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Spacer(),
-                  const AppLogo(width: 240),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: const AppLogo(width: 240),
+                  ),
                   const SizedBox(height: 24),
                   Text(
                     'Book. Play. Compete.',

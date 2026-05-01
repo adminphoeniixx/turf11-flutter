@@ -109,8 +109,8 @@ class _TurfListScreenState extends State<TurfListScreen> {
                           onTap: _openRadiusFilter,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 7,
+                              horizontal: 12,
+                              vertical: 5,
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.white,
@@ -132,7 +132,7 @@ class _TurfListScreenState extends State<TurfListScreen> {
                                   return Text(
                                     '${controller.selectedRadiusKm.value} km',
                                     style: GoogleFonts.dmSans(
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.dark,
                                     ),
@@ -157,9 +157,10 @@ class _TurfListScreenState extends State<TurfListScreen> {
                       spacing: 6,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
-                        vertical: 7,
+                        vertical: 5,
                       ),
                       fontSize: 10,
+                      height: kAppCompactButtonHeight,
                       onChanged: (index) => setState(() => _sportIndex = index),
                     ),
                     const SizedBox(height: kScreenSectionSpacing),

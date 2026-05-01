@@ -13,7 +13,7 @@ import '../widgets/shared_widgets.dart';
 
 const double _compactButtonVerticalPadding = kAppButtonVerticalPadding;
 const double _compactButtonFontSize = kAppButtonFontSize;
-const double _compactActionButtonHeight = kAppButtonHeight;
+const double _compactActionButtonHeight = kAppCompactButtonHeight;
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -126,6 +126,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                                   ? 'Loading...'
                                   : 'Load More',
                               isOutline: true,
+                              compact: true,
                               onTap: controller.isLoadMoreLoading.value
                                   ? null
                                   : () => controller.loadBookings(loadMore: true),
@@ -163,6 +164,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      useSafeArea: true,
       builder: (sheetContext) {
         return Padding(
           padding: EdgeInsets.only(
@@ -182,6 +184,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Text(
                       'Cancel Booking',
                       style: GoogleFonts.dmSans(
@@ -235,92 +248,105 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton(
-                            onPressed: isSubmitting
-                                ? null
-                                : () => Navigator.of(sheetContext).pop(),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: AppColors.border),
-                              padding: EdgeInsets.symmetric(
-                                vertical: _compactButtonVerticalPadding,
+                          child: SizedBox(
+                            height: 40,
+                            child: OutlinedButton(
+                              onPressed: isSubmitting
+                                  ? null
+                                  : () => Navigator.of(sheetContext).pop(),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: AppColors.border),
+                                padding: EdgeInsets.zero,
+                                alignment: Alignment.center,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: Text(
-                              'Keep Booking',
-                              style: GoogleFonts.dmSans(
-                                fontSize: _compactButtonFontSize,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.dark,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'Keep Booking',
+                                  maxLines: 1,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.dark,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: ElevatedButton(
-                            onPressed: isSubmitting
-                                ? null
-                                : () async {
-                                    final reason =
-                                        reasonController.text.trim().isEmpty
-                                            ? 'Changed plans'
-                                            : reasonController.text.trim();
+                          child: SizedBox(
+                            height: 40,
+                            child: ElevatedButton(
+                              onPressed: isSubmitting
+                                  ? null
+                                  : () async {
+                                      final reason =
+                                          reasonController.text.trim().isEmpty
+                                              ? 'Changed plans'
+                                              : reasonController.text.trim();
 
-                                    setModalState(() {
-                                      isSubmitting = true;
-                                    });
-                                    final result =
-                                        await controller.cancelBooking(
-                                      bookingId: booking.id,
-                                      reason: reason,
-                                    );
-
-                                    if (!mounted) {
-                                      return;
-                                    }
-
-                                    Navigator.of(sheetContext).pop();
-                                    if (result.success) {
-                                      _showCancelSuccessSheet(result);
-                                    } else {
-                                      Get.snackbar(
-                                        'Cancel Failed',
-                                        result.message,
+                                      setModalState(() {
+                                        isSubmitting = true;
+                                      });
+                                      final result =
+                                          await controller.cancelBooking(
+                                        bookingId: booking.id,
+                                        reason: reason,
                                       );
-                                    }
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.red,
-                              foregroundColor: Colors.white,
-                              padding: EdgeInsets.symmetric(
-                                vertical: _compactButtonVerticalPadding,
+
+                                      if (!mounted) {
+                                        return;
+                                      }
+
+                                      Navigator.of(sheetContext).pop();
+                                      if (result.success) {
+                                        _showCancelSuccessSheet(result);
+                                      } else {
+                                        Get.snackbar(
+                                          'Cancel Failed',
+                                          result.message,
+                                        );
+                                      }
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.red,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.zero,
+                                alignment: Alignment.center,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
                               ),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: isSubmitting
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
+                              child: isSubmitting
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    )
+                                  : FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'Cancel Booking',
+                                        maxLines: 1,
+                                        style: GoogleFonts.dmSans(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
-                                  )
-                                : Text(
-                                    'Cancel Booking',
-                                    style: GoogleFonts.dmSans(
-                                      fontSize: _compactButtonFontSize,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
+                            ),
                           ),
                         ),
                       ],
@@ -419,6 +445,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
+                  height: _compactActionButtonHeight,
                   child: ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(),
                     style: ElevatedButton.styleFrom(
@@ -593,7 +620,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
           final players = controller.bookingPlayers;
           final error = controller.bookingPlayersErrorMessage.value;
           return FractionallySizedBox(
-            heightFactor: 0.78,
+            heightFactor: 0.5,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               child: Column(
@@ -887,48 +914,50 @@ class _BookingCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: SizedBox(
-                    height: _compactActionButtonHeight,
-                    child: OutlinedButton.icon(
-                      onPressed: isCanceling ? null : onCancel,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.red,
-                        side: const BorderSide(color: AppColors.red),
-                        padding: EdgeInsets.symmetric(
-                          vertical: _compactButtonVerticalPadding,
+                if (booking.canCancel) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SizedBox(
+                      height: _compactActionButtonHeight,
+                      child: OutlinedButton.icon(
+                        onPressed: isCanceling ? null : onCancel,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.red,
+                          side: const BorderSide(color: AppColors.red),
+                          padding: EdgeInsets.symmetric(
+                            vertical: _compactButtonVerticalPadding,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      icon: isCanceling
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.red,
+                        icon: isCanceling
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.red,
+                                  ),
                                 ),
-                              ),
-                            )
-                          : const Icon(LucideIcons.xCircle, size: 14),
-                      label: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          isCanceling ? 'Cancelling' : 'Cancel',
-                          maxLines: 1,
-                          style: GoogleFonts.dmSans(
-                            fontSize: _compactButtonFontSize,
-                            fontWeight: FontWeight.w700,
+                              )
+                            : const Icon(LucideIcons.xCircle, size: 14),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            isCanceling ? 'Cancelling' : 'Cancel',
+                            maxLines: 1,
+                            style: GoogleFonts.dmSans(
+                              fontSize: _compactButtonFontSize,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ],

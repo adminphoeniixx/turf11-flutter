@@ -22,7 +22,7 @@ class BookingCreateResult {
   });
 
   bool get hasInsufficientWallet =>
-      !success && walletBalance > 0 && requiredAmount > walletBalance;
+      !success && requiredAmount > walletBalance;
 
   factory BookingCreateResult.fromJson(Map<String, dynamic> json) {
     final data = _readMap(json['data']);

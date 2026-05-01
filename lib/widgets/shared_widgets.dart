@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../theme/app_theme.dart';
 
-const double kAppButtonHeight = 34;
+const double kAppButtonHeight = 44;
+const double kAppCompactButtonHeight = 34;
 const double kAppButtonHorizontalPadding = 14;
 const double kAppButtonVerticalPadding = 7;
 const double kAppButtonFontSize = 11;
@@ -48,6 +49,7 @@ class AppButton extends StatelessWidget {
   final bool isOutline;
   final IconData? trailingIcon;
   final bool compact;
+  final bool large;
 
   const AppButton({
     super.key,
@@ -57,27 +59,40 @@ class AppButton extends StatelessWidget {
     this.isOutline = false,
     this.trailingIcon,
     this.compact = false,
+    this.large = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final bg = color ?? AppColors.dark;
+    final buttonHeight = large || compact ? null : kAppButtonHeight;
+    final minimumHeight = large || compact ? 0.0 : kAppButtonHeight;
+    final verticalPadding = large ? 16.0 : kAppButtonVerticalPadding;
+    final fontSize = large ? 14.0 : kAppButtonFontSize;
+    final trailingSize = large ? 38.0 : kAppButtonTrailingSize;
+    final iconSize = large ? 18.0 : kAppButtonIconSize;
+    final buttonPadding = large || compact
+        ? EdgeInsets.symmetric(vertical: verticalPadding)
+        : const EdgeInsets.symmetric(horizontal: kAppButtonHorizontalPadding);
+    final tapTargetSize =
+        compact ? MaterialTapTargetSize.shrinkWrap : null;
     if (isOutline) {
       return SizedBox(
         width: double.infinity,
+        height: buttonHeight,
         child: OutlinedButton(
           onPressed: onTap,
           style: OutlinedButton.styleFrom(
             side: BorderSide(color: bg, width: 1.5),
             shape: const StadiumBorder(),
-            minimumSize: const Size(0, kAppButtonHeight),
-            padding: const EdgeInsets.symmetric(
-              vertical: kAppButtonVerticalPadding,
-            ),
+            minimumSize: Size(0, minimumHeight),
+            padding: buttonPadding,
+            alignment: Alignment.center,
+            tapTargetSize: tapTargetSize,
           ),
           child: Text(label,
               style: GoogleFonts.dmSans(
-                  fontSize: kAppButtonFontSize,
+                  fontSize: large ? 13 : fontSize,
                   fontWeight: FontWeight.w600,
                   color: bg)),
         ),
@@ -85,16 +100,17 @@ class AppButton extends StatelessWidget {
     }
     return SizedBox(
       width: double.infinity,
+      height: buttonHeight,
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
           backgroundColor: bg,
           foregroundColor: Colors.white,
           shape: const StadiumBorder(),
-          minimumSize: const Size(0, kAppButtonHeight),
-          padding: const EdgeInsets.symmetric(
-            vertical: kAppButtonVerticalPadding,
-          ),
+          minimumSize: Size(0, minimumHeight),
+          padding: buttonPadding,
+          alignment: Alignment.center,
+          tapTargetSize: tapTargetSize,
           elevation: 0,
         ),
         child: Row(
@@ -103,22 +119,22 @@ class AppButton extends StatelessWidget {
               : MainAxisAlignment.center,
           children: [
             if (trailingIcon != null)
-              const SizedBox(width: kAppButtonTrailingSize),
+              SizedBox(width: trailingSize),
             Text(label,
                 style: GoogleFonts.dmSans(
-                    fontSize: kAppButtonFontSize,
+                    fontSize: fontSize,
                     fontWeight: FontWeight.w700,
                     color: Colors.white)),
             if (trailingIcon != null)
               Container(
-                width: kAppButtonTrailingSize,
-                height: kAppButtonTrailingSize,
+                width: trailingSize,
+                height: trailingSize,
                 decoration: const BoxDecoration(
                     color: AppColors.green, shape: BoxShape.circle),
                 child: Icon(
                   trailingIcon,
                   color: Colors.white,
-                  size: kAppButtonIconSize,
+                  size: iconSize,
                 ),
               ),
           ],
@@ -248,6 +264,7 @@ class ChipRow extends StatefulWidget {
   final double spacing;
   final EdgeInsetsGeometry padding;
   final double fontSize;
+  final double height;
   const ChipRow(
     this.options, {
     super.key,
@@ -257,6 +274,7 @@ class ChipRow extends StatefulWidget {
     this.spacing = 8,
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.fontSize = 12,
+    this.height = kAppButtonHeight,
   });
 
   @override
@@ -283,6 +301,7 @@ class _ChipRowState extends State<ChipRow> {
         },
         child: Container(
           width: double.infinity,
+          height: widget.height,
           padding: widget.padding,
           decoration: BoxDecoration(
             color: on ? AppColors.dark : AppColors.white,
@@ -292,13 +311,15 @@ class _ChipRowState extends State<ChipRow> {
               width: 1.5,
             ),
           ),
-          child: Text(
-            widget.options[i],
-            textAlign: TextAlign.center,
-            style: GoogleFonts.dmSans(
-              fontSize: widget.fontSize,
-              fontWeight: FontWeight.w500,
-              color: on ? Colors.white : AppColors.muted,
+          child: Center(
+            child: Text(
+              widget.options[i],
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(
+                fontSize: widget.fontSize,
+                fontWeight: FontWeight.w500,
+                color: on ? Colors.white : AppColors.muted,
+              ),
             ),
           ),
         ),

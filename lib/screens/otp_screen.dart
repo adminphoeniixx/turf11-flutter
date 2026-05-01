@@ -69,6 +69,48 @@ class _OtpScreenState extends State<OtpScreen> {
     super.dispose();
   }
 
+  void _handleOtpChanged(String value, int index) {
+    if (value.length > 1) {
+      _fillOtp(value);
+      return;
+    }
+
+    if (value.isNotEmpty && index < _focusNodes.length - 1) {
+      _focusNodes[index + 1].requestFocus();
+    } else if (value.isEmpty && index > 0) {
+      _focusNodes[index - 1].requestFocus();
+    }
+  }
+
+  KeyEventResult _handleOtpKey(KeyEvent event, int index) {
+    if (event is! KeyDownEvent ||
+        event.logicalKey != LogicalKeyboardKey.backspace ||
+        index == 0 ||
+        _controllers[index].text.isNotEmpty) {
+      return KeyEventResult.ignored;
+    }
+
+    _controllers[index - 1].clear();
+    _focusNodes[index - 1].requestFocus();
+    return KeyEventResult.handled;
+  }
+
+  void _fillOtp(String value) {
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) {
+      return;
+    }
+
+    for (var i = 0; i < _controllers.length; i++) {
+      _controllers[i].text = i < digits.length ? digits[i] : '';
+    }
+
+    final nextIndex = digits.length >= _focusNodes.length
+        ? _focusNodes.length - 1
+        : digits.length;
+    _focusNodes[nextIndex].requestFocus();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,56 +163,65 @@ class _OtpScreenState extends State<OtpScreen> {
                     // OTP BOXES
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(6, (i) {
-                          return Container(
-                            width: 48,
-                            height: 56,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            child: TextField(
-                              controller: _controllers[i],
-                              focusNode: _focusNodes[i],
-                              textAlign: TextAlign.center,
-                              keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(1),
-                              ],
-                              style: GoogleFonts.dmSans(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.dark),
-                              decoration: InputDecoration(
-                                filled: true,
-                                fillColor: AppColors.white,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(
-                                      color: AppColors.border, width: 2),
+                      child: AutofillGroup(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(6, (i) {
+                            return Container(
+                              width: 48,
+                              height: 56,
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              child: Focus(
+                                onKeyEvent: (_, event) =>
+                                    _handleOtpKey(event, i),
+                                child: TextField(
+                                  controller: _controllers[i],
+                                  focusNode: _focusNodes[i],
+                                  textAlign: TextAlign.center,
+                                  keyboardType: TextInputType.number,
+                                  textInputAction: i == 5
+                                      ? TextInputAction.done
+                                      : TextInputAction.next,
+                                  autofillHints: i == 0
+                                      ? const [AutofillHints.oneTimeCode]
+                                      : null,
+                                  enableSuggestions: false,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(6),
+                                  ],
+                                  style: GoogleFonts.dmSans(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.dark),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: AppColors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(
+                                          color: AppColors.border, width: 2),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(
+                                          color: AppColors.border, width: 2),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(
+                                          color: AppColors.green, width: 2),
+                                    ),
+                                    contentPadding: EdgeInsets.zero,
+                                    counterText: '',
+                                  ),
+                                  onChanged: (value) =>
+                                      _handleOtpChanged(value, i),
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(
-                                      color: AppColors.border, width: 2),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(
-                                      color: AppColors.green, width: 2),
-                                ),
-                                contentPadding: EdgeInsets.zero,
                               ),
-                              onChanged: (v) {
-                                if (v.isNotEmpty && i < 5) {
-                                  _focusNodes[i + 1].requestFocus();
-                                } else if (v.isEmpty && i > 0) {
-                                  _focusNodes[i - 1].requestFocus();
-                                }
-                              },
-                            ),
-                          );
-                        }),
+                            );
+                          }),
+                        ),
                       ),
                     ),
 
@@ -184,6 +235,7 @@ class _OtpScreenState extends State<OtpScreen> {
                             : (widget.isLogin
                                 ? 'Verify & Login'
                                 : 'Verify & Register'),
+                        large: true,
                         onTap: controller.isLoading.value
                             ? null
                             : () async {
