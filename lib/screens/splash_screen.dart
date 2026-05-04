@@ -49,21 +49,15 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _bootstrapSession() async {
-    await Future<void>.delayed(const Duration(milliseconds: 1500));
-    if (!mounted || _isRouting) {
-      return;
-    }
-
-    final hasToken = await StorageService.hasToken();
+    final hasTokenFuture = StorageService.hasToken();
+    await Future<void>.delayed(const Duration(milliseconds: 1000));
+    final hasToken = await hasTokenFuture;
     if (!mounted || _isRouting) {
       return;
     }
 
     if (hasToken) {
-      await SessionBootstrapService.bootstrapSession(forceRefresh: true);
-      if (!mounted || _isRouting) {
-        return;
-      }
+      unawaited(SessionBootstrapService.bootstrapSession(forceRefresh: true));
       _goHome();
       return;
     }
@@ -138,7 +132,8 @@ class _SplashScreenState extends State<SplashScreen>
                     height: 28,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.green),
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppColors.green),
                       backgroundColor: Colors.white12,
                     ),
                   ),
