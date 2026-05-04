@@ -3,7 +3,6 @@ import 'package:geocoding/geocoding.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-
 import '../core/session_bootstrap_service.dart';
 import '../core/location_service.dart';
 import '../controllers/profile_controller.dart';
@@ -18,7 +17,6 @@ import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bottom_nav.dart';
 import '../widgets/shared_widgets.dart';
-import 'booking_screen.dart';
 import 'matches_screen.dart';
 import 'my_bookings_screen.dart';
 import 'notifications_screen.dart';

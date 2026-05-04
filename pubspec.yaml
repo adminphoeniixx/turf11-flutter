@@ -1,7 +1,7 @@
 name: turf11
 description: Turf11 - Cricket Booking App
 publish_to: 'none'
-version: 1.0.1+9
+version: 1.0.1+12
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
