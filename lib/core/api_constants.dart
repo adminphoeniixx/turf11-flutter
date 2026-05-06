@@ -1,5 +1,5 @@
 class ApiConstants {
-  static const String baseUrl = "https://ai-turf11-laravel.rmsiry.easypanel.host/api/v1";
+  static const String baseUrl = "https://turf11.in/api/v1";
 
   // AUTH
   static const sendOtp = "/auth/send-otp";
@@ -9,6 +9,7 @@ class ApiConstants {
   static const checkPhone = "/auth/check-phone";
   static const logout = "/auth/logout";
   static const profile = "/profile";
+  static const fcmToken = "/fcm-token";
   static const bookings = "/bookings";
 
   // MATCHES

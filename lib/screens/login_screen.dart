@@ -22,43 +22,55 @@ class LoginScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            kScreenHorizontalPadding,
-            10,
-            kScreenHorizontalPadding,
-            kScreenBottomSpacing,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                kScreenHorizontalPadding,
+                10,
+                kScreenHorizontalPadding,
+                kScreenBottomSpacing,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - kScreenBottomSpacing - 10,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               // 🔥 SAME UI (no change)
               const SizedBox(height: 20),
-              Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: Image.asset(
-                    'assets/images/app_icon.png',
-                    width: 170,
-                    height: 170,
-                    fit: BoxFit.cover,
+               Transform.translate(
+                offset: const Offset(0, -28),
+                child: const Center(
+                  child: SizedBox(
+                    width: 210,
+                    height: 48,
+                    child: AppLogo(
+                      width: 210,
+                      variant: AppLogoVariant.blackGreen,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: kScreenBlockSpacing),
+              const SizedBox(height: 4),
 
-              Text('Welcome back.',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.dark,
-                      letterSpacing: -0.3)),
+              Text(
+                'Welcome back.',
+                style: GoogleFonts.dmSans(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.dark,
+                    letterSpacing: -0.3),
+              ),
 
               const SizedBox(height: 4),
 
-              Text('Sign in with your mobile number',
-                  style:
-                      GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted)),
+              Text(
+                'Sign in with your mobile number',
+                style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted),
+              ),
 
               const SizedBox(height: kScreenBlockSpacing),
 
@@ -146,9 +158,12 @@ class LoginScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ],
+                  ],
+                ),
+              ),
+            );
+          },
           ),
-        ),
       ),
     );
   }

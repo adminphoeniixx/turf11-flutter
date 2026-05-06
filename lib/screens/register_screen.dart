@@ -66,17 +66,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Create Account',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.dark)),
+                     Transform.translate(
+                      offset: const Offset(0, -8),
+                      child: const Center(child: AppLogo(width: 180)),
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Text(
+                      'Create Account',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark),
+                    ),
 
                     const SizedBox(height: 4),
 
-                    Text('Join 50,000+ players across India',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12, color: AppColors.muted)),
+                    Text(
+                      'Join 50,000+ players across India',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 12, color: AppColors.muted),
+                    ),
 
                     const SizedBox(height: kScreenBlockSpacing),
 
@@ -100,38 +111,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     _label('Preferred Sports'),
 
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: List.generate(_sports.length, (i) {
-                        final on = _selectedSports.contains(i);
-                        return GestureDetector(
-                          onTap: () => setState(() {
-                            if (on) {
-                              _selectedSports.remove(i);
-                            } else {
-                              _selectedSports.add(i);
-                            }
-                          }),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: on ? AppColors.dark : AppColors.white,
-                              borderRadius: BorderRadius.circular(30),
-                              border: Border.all(
-                                  color: on ? AppColors.dark : AppColors.border,
-                                  width: 1.5),
-                            ),
-                            child: Text(_sports[i],
-                                style: GoogleFonts.dmSans(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: List.generate(_sports.length, (i) {
+                          final on = _selectedSports.contains(i);
+                          return GestureDetector(
+                            onTap: () => setState(() {
+                              if (on) {
+                                _selectedSports.remove(i);
+                              } else {
+                                _selectedSports.add(i);
+                              }
+                            }),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: on ? AppColors.dark : AppColors.white,
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(
                                     color:
-                                        on ? Colors.white : AppColors.muted)),
-                          ),
-                        );
-                      }),
+                                        on ? AppColors.dark : AppColors.border,
+                                    width: 1.5),
+                              ),
+                              child: Text(_sports[i],
+                                  style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color:
+                                          on ? Colors.white : AppColors.muted)),
+                            ),
+                          );
+                        }),
+                      ),
                     ),
 
                     const SizedBox(height: kScreenBlockSpacing),

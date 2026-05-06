@@ -10,16 +10,17 @@ import '../controllers/match_controller.dart';
 import '../controllers/tournament_controller.dart';
 import '../controllers/turf_controller.dart';
 import '../controllers/wallet_controller.dart';
+import '../data/models/match_action_model.dart';
 import '../data/models/match_model.dart';
 import '../data/models/profile_model.dart';
 import '../data/models/tournament_model.dart';
 import '../data/models/turf_model.dart';
+import '../data/services/fcm_token_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/bottom_nav.dart';
 import '../widgets/shared_widgets.dart';
 import 'matches_screen.dart';
 import 'my_bookings_screen.dart';
-import 'notifications_screen.dart';
 import 'profile_screen.dart';
 import 'teams_screen.dart';
 import 'tournament_screen.dart';
@@ -77,10 +78,21 @@ class _HomeContent extends StatefulWidget {
 
 class _HomeContentState extends State<_HomeContent> {
   final TextEditingController _locationCityController = TextEditingController();
+  final TextEditingController _nearbyPlayersRadiusController =
+      TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FcmTokenService.syncDeviceToken();
+    });
+  }
 
   @override
   void dispose() {
     _locationCityController.dispose();
+    _nearbyPlayersRadiusController.dispose();
     super.dispose();
   }
 
@@ -377,6 +389,197 @@ class _HomeContentState extends State<_HomeContent> {
     );
   }
 
+  Future<void> _openNearbyPlayersSheet(MatchController matchController) async {
+    _nearbyPlayersRadiusController.text =
+        matchController.nearbyPlayersRadiusKm.value.toString();
+    matchController.loadNearbyPlayers();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Container(
+          height: MediaQuery.of(sheetContext).size.height * 0.5,
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                kScreenHorizontalPadding,
+                12,
+                kScreenHorizontalPadding,
+                20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Nearby Players',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.dark,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Obx(
+                              () => Text(
+                                'Radius ${matchController.nearbyPlayersRadiusKm.value} km',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: matchController.loadNearbyPlayers,
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: AppColors.bg,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: const Icon(
+                            LucideIcons.refreshCcw,
+                            size: 16,
+                            color: AppColors.dark,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 40,
+                          child: TextField(
+                            controller: _nearbyPlayersRadiusController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              hintText: 'Radius km',
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12,
+                              color: AppColors.dark,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        height: 40,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final radius = int.tryParse(
+                              _nearbyPlayersRadiusController.text.trim(),
+                            );
+                            if (radius == null || radius <= 0) {
+                              Get.snackbar(
+                                'Error',
+                                'Please enter a valid radius in km.',
+                              );
+                              return;
+                            }
+                            await matchController.loadNearbyPlayers(
+                              radius: radius,
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.dark,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: const StadiumBorder(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                            ),
+                          ),
+                          child: Text(
+                            'Apply',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: Obx(() {
+                      final players = matchController.nearbyPlayers;
+                      final isLoading =
+                          matchController.isNearbyPlayersLoading.value;
+
+                      if (isLoading && players.isEmpty) {
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(28),
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+
+                      if (players.isEmpty) {
+                        return _NearbyPlayersEmptyState(
+                          isLoading: isLoading,
+                        );
+                      }
+
+                      return ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: players.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          return _NearbyPlayerTile(player: players[index]);
+                        },
+                      );
+                    }),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final walletController = Get.put(WalletController());
@@ -481,28 +684,6 @@ class _HomeContentState extends State<_HomeContent> {
                       ),
                       Row(
                         children: [
-                          GestureDetector(
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const NotificationsScreen(),
-                              ),
-                            ),
-                            child: Container(
-                              width: 44,
-                              height: 44,
-                              margin: const EdgeInsets.only(right: 10),
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: const Icon(
-                                LucideIcons.bell,
-                                size: 18,
-                                color: AppColors.dark,
-                              ),
-                            ),
-                          ),
                           GestureDetector(
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(
@@ -724,6 +905,60 @@ class _HomeContentState extends State<_HomeContent> {
                         ),
                         Text(
                           'Open',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.green,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => _openNearbyPlayersSheet(matchController),
+                  child: SmallCard(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            color: AppColors.greenLt,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            LucideIcons.search,
+                            color: AppColors.green,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Nearby Players',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.dark,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Find players around your current location.',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          'View',
                           style: GoogleFonts.dmSans(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -1416,6 +1651,134 @@ class _TurfCard extends StatelessWidget {
     final address =
         turf.address.trim().isNotEmpty ? turf.address : turf.location;
     return '$distance$address';
+  }
+}
+
+class _NearbyPlayerTile extends StatelessWidget {
+  final NearbyPlayerModel player;
+
+  const _NearbyPlayerTile({
+    required this.player,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = [
+      if (player.sport.trim().isNotEmpty) _capitalize(player.sport),
+      if (player.city.trim().isNotEmpty) player.city,
+      if (player.phone.trim().isNotEmpty) player.phone,
+    ].join(' | ');
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          AppAvatar(
+            initials: player.initials,
+            size: 42,
+            bg: AppColors.green,
+            fg: Colors.white,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  player.name,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.dark,
+                  ),
+                ),
+                if (meta.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    meta,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10.5,
+                      color: AppColors.muted,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Icon(
+            LucideIcons.chevronRight,
+            size: 16,
+            color: AppColors.muted,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _capitalize(String value) {
+    if (value.trim().isEmpty) {
+      return '';
+    }
+    final normalized = value.trim().toLowerCase();
+    return normalized[0].toUpperCase() + normalized.substring(1);
+  }
+}
+
+class _NearbyPlayersEmptyState extends StatelessWidget {
+  final bool isLoading;
+
+  const _NearbyPlayersEmptyState({
+    required this.isLoading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            LucideIcons.users,
+            size: 24,
+            color: AppColors.green,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            isLoading ? 'Finding players...' : 'No nearby players found',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.dark,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Try refreshing after location permission is available.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              color: AppColors.muted,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

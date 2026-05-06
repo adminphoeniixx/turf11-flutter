@@ -18,22 +18,32 @@ const double kScreenBlockSpacing = 16;
 const double kScreenBottomSpacing = 30;
 const double kScreenListBottomPadding = 90;
 
+enum AppLogoVariant { blackGreen, whiteGreen, icon }
+
 class AppLogo extends StatelessWidget {
   final double width;
   final double? height;
   final BoxFit fit;
+  final AppLogoVariant variant;
 
   const AppLogo({
     super.key,
     this.width = 180,
     this.height,
     this.fit = BoxFit.contain,
+    this.variant = AppLogoVariant.blackGreen,
   });
 
   @override
   Widget build(BuildContext context) {
+    final asset = switch (variant) {
+      AppLogoVariant.blackGreen => 'assets/images/logo_black_green.png',
+      AppLogoVariant.whiteGreen => 'assets/images/logo_white_green.png',
+      AppLogoVariant.icon => 'assets/images/app_icon.png',
+    };
+
     return Image.asset(
-      'assets/images/app_icon.png',
+      asset,
       width: width,
       height: height,
       fit: fit,
@@ -793,10 +803,13 @@ class TurfFieldBanner extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const SizedBox(
-                      height: 38,
+                      height: 24,
                       child: FittedBox(
                         fit: BoxFit.contain,
-                        child: AppLogo(width: 124),
+                        child: AppLogo(
+                          width: 78,
+                          variant: AppLogoVariant.whiteGreen,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 2),

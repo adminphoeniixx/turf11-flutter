@@ -116,251 +116,280 @@ class _OtpScreenState extends State<OtpScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            BackRow(label: 'OTP Verification', onBack: () => Navigator.pop(context)),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ICON
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: AppColors.greenLt,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: const Icon(Icons.phone_android,
-                          color: AppColors.green, size: 28),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          BackRow(
+              label: 'OTP Verification', onBack: () => Navigator.pop(context)),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - 38,
                     ),
-
-                    const SizedBox(height: 18),
-
-                    Text('Verify Number',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.dark)),
-
-                    const SizedBox(height: 4),
-
-                    Text('We sent a 6-digit OTP to',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12, color: AppColors.muted)),
-
-                    const SizedBox(height: 2),
-
-                    Text('+91 ${widget.phone}',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.dark)),
-
-                    // OTP BOXES
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: AutofillGroup(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(6, (i) {
-                            return Container(
-                              width: 48,
-                              height: 56,
-                              margin: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Focus(
-                                onKeyEvent: (_, event) =>
-                                    _handleOtpKey(event, i),
-                                child: TextField(
-                                  controller: _controllers[i],
-                                  focusNode: _focusNodes[i],
-                                  textAlign: TextAlign.center,
-                                  keyboardType: TextInputType.number,
-                                  textInputAction: i == 5
-                                      ? TextInputAction.done
-                                      : TextInputAction.next,
-                                  autofillHints: i == 0
-                                      ? const [AutofillHints.oneTimeCode]
-                                      : null,
-                                  enableSuggestions: false,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(6),
-                                  ],
-                                  style: GoogleFonts.dmSans(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.dark),
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: AppColors.white,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: const BorderSide(
-                                          color: AppColors.border, width: 2),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: const BorderSide(
-                                          color: AppColors.border, width: 2),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                      borderSide: const BorderSide(
-                                          color: AppColors.green, width: 2),
-                                    ),
-                                    contentPadding: EdgeInsets.zero,
-                                    counterText: '',
-                                  ),
-                                  onChanged: (value) =>
-                                      _handleOtpChanged(value, i),
-                                ),
-                              ),
-                            );
-                          }),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ICON
+                         Transform.translate(
+                          offset: const Offset(0, -24),
+                          child: const Center(child: AppLogo(width: 180)),
                         ),
-                      ),
-                    ),
 
-                    // VERIFY BUTTON
-                    Obx(
-                      () => AppButton(
-                        label: controller.isLoading.value
-                            ? (widget.isLogin
-                                ? 'Verifying...'
-                                : 'Creating account...')
-                            : (widget.isLogin
-                                ? 'Verify & Login'
-                                : 'Verify & Register'),
-                        large: true,
-                        onTap: controller.isLoading.value
-                            ? null
-                            : () async {
-                                FocusScope.of(context).unfocus();
-                                final otp = _controllers.map((e) => e.text).join();
+                        const SizedBox(height: 4),
 
-                                if (otp.length != 6) {
-                                  Get.snackbar("Error", "Enter valid OTP");
-                                  return;
-                                }
-
-                                bool isSuccess = false;
-                                if (widget.isLogin) {
-                                  isSuccess =
-                                      await controller.login(widget.phone, otp);
-                                } else {
-                                  final payload = <String, dynamic>{
-                                    ...?widget.registrationData,
-                                    "phone": widget.phone,
-                                    "otp": otp,
-                                    "device_name": "flutter",
-                                  };
-                                  isSuccess = await controller.register(payload);
-                                }
-
-                                if (!isSuccess) {
-                                  return;
-                                }
-
-                                Get.offAll(() => const HomeScreen());
-                              },
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    Obx(
-                      () => AnimatedOpacity(
-                        duration: const Duration(milliseconds: 200),
-                        opacity: controller.isLoading.value ? 1 : 0,
-                        child: Text(
-                          'Verifying OTP, please wait.',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 11,
-                            color: AppColors.muted,
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: AppColors.greenLt,
+                            borderRadius: BorderRadius.circular(18),
                           ),
+                          child: const Icon(Icons.phone_android,
+                              color: AppColors.green, size: 28),
                         ),
-                      ),
-                    ),
 
-                    const SizedBox(height: 16),
+                        const SizedBox(height: 18),
 
-                    // RESEND OTP
-                    Center(
-                      child: Obx(
-                        () => GestureDetector(
-                          onTap: _seconds > 0 || controller.isLoading.value
-                              ? null
-                              : () async {
-                                  final resent =
-                                      await controller.resendOtp(
-                                        widget.phone,
-                                        widget.isLogin,
-                                      );
-                                  if (resent && mounted) {
-                                    setState(() => _seconds = 120);
-                                    _startTimer();
-                                  }
-                                },
-                          child: Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: "Didn't receive it? ",
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 12,
-                                    color: AppColors.muted,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: controller.isLoading.value
-                                      ? 'Please wait'
-                                      : (_seconds > 0
-                                          ? 'Resend in $_timerStr'
-                                          : 'Resend OTP'),
-                                  style: GoogleFonts.dmSans(
-                                    fontSize: 12,
-                                    color: _seconds > 0 || controller.isLoading.value
-                                        ? AppColors.muted2
-                                        : AppColors.green,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // TIMER
-                    Center(
-                      child: Text.rich(TextSpan(children: [
-                        TextSpan(
-                          text: 'Expires in ',
+                        Text(
+                          'Verify Number',
                           style: GoogleFonts.dmSans(
-                              fontSize: 11, color: AppColors.muted2),
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.dark),
                         ),
-                        TextSpan(
-                          text: _timerStr,
+
+                        const SizedBox(height: 4),
+
+                        Text(
+                          'We sent a 6-digit OTP to',
                           style: GoogleFonts.dmSans(
-                              fontSize: 11,
+                              fontSize: 12, color: AppColors.muted),
+                        ),
+
+                        const SizedBox(height: 2),
+
+                        Text(
+                          '+91 ${widget.phone}',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: AppColors.dark),
                         ),
-                      ])),
+
+                        // OTP BOXES
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          child: AutofillGroup(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(6, (i) {
+                                return Container(
+                                  width: 48,
+                                  height: 56,
+                                  margin:
+                                      const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Focus(
+                                    onKeyEvent: (_, event) =>
+                                        _handleOtpKey(event, i),
+                                    child: TextField(
+                                      controller: _controllers[i],
+                                      focusNode: _focusNodes[i],
+                                      textAlign: TextAlign.center,
+                                      keyboardType: TextInputType.number,
+                                      textInputAction: i == 5
+                                          ? TextInputAction.done
+                                          : TextInputAction.next,
+                                      autofillHints: i == 0
+                                          ? const [AutofillHints.oneTimeCode]
+                                          : null,
+                                      enableSuggestions: false,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                        LengthLimitingTextInputFormatter(6),
+                                      ],
+                                      style: GoogleFonts.dmSans(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.dark),
+                                      decoration: InputDecoration(
+                                        filled: true,
+                                        fillColor: AppColors.white,
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                          borderSide: const BorderSide(
+                                              color: AppColors.border,
+                                              width: 2),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                          borderSide: const BorderSide(
+                                              color: AppColors.border,
+                                              width: 2),
+                                        ),
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                          borderSide: const BorderSide(
+                                              color: AppColors.green, width: 2),
+                                        ),
+                                        contentPadding: EdgeInsets.zero,
+                                        counterText: '',
+                                      ),
+                                      onChanged: (value) =>
+                                          _handleOtpChanged(value, i),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                        ),
+
+                        // VERIFY BUTTON
+                        Obx(
+                          () => AppButton(
+                            label: controller.isLoading.value
+                                ? (widget.isLogin
+                                    ? 'Verifying...'
+                                    : 'Creating account...')
+                                : (widget.isLogin
+                                    ? 'Verify & Login'
+                                    : 'Verify & Register'),
+                            large: true,
+                            onTap: controller.isLoading.value
+                                ? null
+                                : () async {
+                                    FocusScope.of(context).unfocus();
+                                    final otp =
+                                        _controllers.map((e) => e.text).join();
+
+                                    if (otp.length != 6) {
+                                      Get.snackbar("Error", "Enter valid OTP");
+                                      return;
+                                    }
+
+                                    bool isSuccess = false;
+                                    if (widget.isLogin) {
+                                      isSuccess = await controller.login(
+                                          widget.phone, otp);
+                                    } else {
+                                      final payload = <String, dynamic>{
+                                        ...?widget.registrationData,
+                                        "phone": widget.phone,
+                                        "otp": otp,
+                                        "device_name": "flutter",
+                                      };
+                                      isSuccess =
+                                          await controller.register(payload);
+                                    }
+
+                                    if (!isSuccess) {
+                                      return;
+                                    }
+
+                                    Get.offAll(() => const HomeScreen());
+                                  },
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        Obx(
+                          () => AnimatedOpacity(
+                            duration: const Duration(milliseconds: 200),
+                            opacity: controller.isLoading.value ? 1 : 0,
+                            child: Text(
+                              'Verifying OTP, please wait.',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                color: AppColors.muted,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // RESEND OTP
+                        Center(
+                          child: Obx(
+                            () => GestureDetector(
+                              onTap: _seconds > 0 || controller.isLoading.value
+                                  ? null
+                                  : () async {
+                                      final resent = await controller.resendOtp(
+                                        widget.phone,
+                                        widget.isLogin,
+                                      );
+                                      if (resent && mounted) {
+                                        setState(() => _seconds = 120);
+                                        _startTimer();
+                                      }
+                                    },
+                              child: Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: "Didn't receive it? ",
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: AppColors.muted,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: controller.isLoading.value
+                                          ? 'Please wait'
+                                          : (_seconds > 0
+                                              ? 'Resend in $_timerStr'
+                                              : 'Resend OTP'),
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 12,
+                                        color: _seconds > 0 ||
+                                                controller.isLoading.value
+                                            ? AppColors.muted2
+                                            : AppColors.green,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        // TIMER
+                        Center(
+                          child: Text.rich(TextSpan(children: [
+                            TextSpan(
+                              text: 'Expires in ',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 11, color: AppColors.muted2),
+                            ),
+                            TextSpan(
+                              text: _timerStr,
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.dark),
+                            ),
+                          ])),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }

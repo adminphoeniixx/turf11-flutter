@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../core/location_service.dart';
 import '../core/session_bootstrap_service.dart';
 import '../core/storage_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
+import 'permission_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -38,7 +38,6 @@ class _SplashScreenState extends State<SplashScreen>
     _slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
     _ctrl.forward();
-    unawaited(LocationService.warmUpLocationPermission());
     _bootstrapSession();
   }
 
@@ -58,11 +57,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     if (hasToken) {
       unawaited(SessionBootstrapService.bootstrapSession(forceRefresh: true));
-      _goHome();
+      await _goAfterPermissions(const HomeScreen());
       return;
     }
 
-    _goLogin();
+    await _goAfterPermissions(LoginScreen());
   }
 
   void _goLogin() {
@@ -82,6 +81,30 @@ class _SplashScreenState extends State<SplashScreen>
     _isRouting = true;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
+  }
+
+  Future<void> _goAfterPermissions(Widget nextScreen) async {
+    final hasPermissions =
+        await PermissionScreen.areRequiredPermissionsEnabled();
+    if (!mounted || _isRouting) {
+      return;
+    }
+
+    if (hasPermissions) {
+      if (nextScreen is HomeScreen) {
+        _goHome();
+      } else {
+        _goLogin();
+      }
+      return;
+    }
+
+    _isRouting = true;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => PermissionScreen(nextScreen: nextScreen),
+      ),
     );
   }
 
@@ -114,7 +137,10 @@ class _SplashScreenState extends State<SplashScreen>
                   const Spacer(),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(24),
-                    child: const AppLogo(width: 240),
+                    child: const AppLogo(
+                      width: 240,
+                      variant: AppLogoVariant.whiteGreen,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   Text(

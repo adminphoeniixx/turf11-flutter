@@ -3,12 +3,13 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:turf11/screens/matches_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../controllers/turf_controller.dart';
 import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
-import 'booking_screen.dart';
+import 'turf_detail_screen.dart';
 
 class TurfListScreen extends StatefulWidget {
   final bool showBackButton;
@@ -209,14 +210,17 @@ class _TurfListScreenState extends State<TurfListScreen> {
                                     builder: (_) => CreateMatchScreen(
                                       initialTurf: turf,
                                     ),
-                                    // builder: (_) => BookingScreen(
-                                    //   turfId: turf.id,
-                                    //   turfName: turf.name,
-                                    //   sportType: turf.sportType,
-                                    //   pricePerHour: turf.pricePerHour.toInt(),
-                                    // ),
                                   ),
                                 ),
+                                onDetailsTap: () =>
+                                    Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => TurfDetailScreen(
+                                      initialTurf: turf,
+                                    ),
+                                  ),
+                                ),
+                                onMapTap: () => _openTurfOnMap(turf),
                               );
                             },
                           ),
@@ -385,15 +389,45 @@ class _TurfListScreenState extends State<TurfListScreen> {
 
     await controller.loadNearbyTurfs(radius: pickedRadius);
   }
+
+  Future<void> _openTurfOnMap(TurfModel turf) async {
+    final latitude = turf.latitude;
+    final longitude = turf.longitude;
+    if (latitude == null || longitude == null) {
+      Get.snackbar('Location unavailable', 'Turf coordinates not found.');
+      return;
+    }
+
+    final uri = Uri.https(
+      'www.google.com',
+      '/maps/dir/',
+      {
+        'api': '1',
+        'destination': '$latitude,$longitude',
+      },
+    );
+
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched) {
+      Get.snackbar('Error', 'Unable to open Google Maps.');
+    }
+  }
 }
 
 class _TurfListCard extends StatelessWidget {
   final TurfModel turf;
   final VoidCallback? onTap;
+  final VoidCallback? onDetailsTap;
+  final VoidCallback? onMapTap;
 
   const _TurfListCard({
     required this.turf,
     this.onTap,
+    this.onDetailsTap,
+    this.onMapTap,
   });
 
   @override
@@ -484,12 +518,26 @@ class _TurfListCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       if ([turf.ratingLabel, turf.reviewLabel]
                           .any((part) => part.trim().isNotEmpty))
-                        Text(
-                          [turf.ratingLabel, turf.reviewLabel]
-                              .where((part) => part.trim().isNotEmpty)
-                              .join(' '),
-                          style: GoogleFonts.dmSans(
-                              fontSize: 10, color: AppColors.green),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              LucideIcons.star,
+                              size: 11,
+                              color: AppColors.green,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              [turf.ratingLabel, turf.reviewLabel]
+                                  .where((part) => part.trim().isNotEmpty)
+                                  .join(' '),
+                              style: GoogleFonts.dmSans(
+                                fontSize: 10,
+                                color: AppColors.green,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                     ],
                   ),
@@ -515,8 +563,35 @@ class _TurfListCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // _pill('Details', AppColors.white, AppColors.dark),
-                      // const SizedBox(width: 6),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onMapTap,
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: AppColors.greenLt,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: const Icon(
+                            LucideIcons.map,
+                            size: 16,
+                            color: AppColors.green,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onDetailsTap,
+                        child: _pill(
+                          'Details',
+                          AppColors.white,
+                          AppColors.dark,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
                       _pill(
                         turf.isAvailable ? 'Book Now' : 'Notify Me',
                         turf.isAvailable ? AppColors.dark : AppColors.white,

@@ -22,6 +22,8 @@ dependencies:
   # UI Helpers
   smooth_page_indicator: ^1.1.0
   firebase_core: ^2.30.0
+  firebase_analytics: ^10.10.7
+  firebase_messaging: ^14.7.10
   # Date Formatting
   intl: ^0.19.0
   change_app_package_name: ^1.5.0

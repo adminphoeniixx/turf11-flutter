@@ -16,6 +16,8 @@ class TurfModel {
   final int totalBookings;
   final bool isAvailable;
   final num? distanceKm;
+  final double? latitude;
+  final double? longitude;
   final TurfPricing? pricing;
   final TurfOperatingHours? operatingHours;
   final List<String> amenities;
@@ -41,6 +43,8 @@ class TurfModel {
     required this.ownerName,
     required this.ownerBusiness,
     this.distanceKm,
+    this.latitude,
+    this.longitude,
     this.pricing,
     this.operatingHours,
   });
@@ -92,6 +96,8 @@ class TurfModel {
           ) ??
           true,
       distanceKm: _readNum(merged, const ['distance_km', 'distance']),
+      latitude: _readDouble(merged, const ['lat', 'latitude']),
+      longitude: _readDouble(merged, const ['lng', 'longitude', 'long']),
       pricing:
           pricingMap.isEmpty ? null : TurfPricing.fromJson(pricingMap),
       operatingHours: hoursMap.isEmpty
@@ -146,6 +152,11 @@ class TurfModel {
       }
     }
     return null;
+  }
+
+  static double? _readDouble(Map<String, dynamic> source, List<String> keys) {
+    final value = _readNum(source, keys);
+    return value?.toDouble();
   }
 
   static bool? _readBool(Map<String, dynamic> source, List<String> keys) {

@@ -663,8 +663,8 @@ class ProfileScreen extends StatelessWidget {
                                   sports: selectedSports.toList(),
                                 );
 
-                                if (success && (Get.isBottomSheetOpen ?? false)) {
-                                  Get.back();
+                                if (success && context.mounted) {
+                                  Navigator.of(context).pop();
                                 }
                               },
                       ),
