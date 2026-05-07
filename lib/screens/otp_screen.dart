@@ -133,7 +133,7 @@ class _OtpScreenState extends State<OtpScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // ICON
-                         Transform.translate(
+                        Transform.translate(
                           offset: const Offset(0, -24),
                           child: const Center(child: AppLogo(width: 180)),
                         ),

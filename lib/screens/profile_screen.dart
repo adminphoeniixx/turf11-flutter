@@ -251,92 +251,92 @@ class ProfileScreen extends StatelessWidget {
                                 height: kAppButtonHeight,
                                 child: OutlinedButton(
                                   onPressed: () {
-                                  final controller =
-                                      Get.isRegistered<AuthController>()
-                                          ? Get.find<AuthController>()
-                                          : Get.put(AuthController());
+                                    final controller =
+                                        Get.isRegistered<AuthController>()
+                                            ? Get.find<AuthController>()
+                                            : Get.put(AuthController());
 
-                                  Get.dialog(
-                                    Dialog(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(24),
-                                      ),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(20),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Log Out',
-                                              style: GoogleFonts.dmSans(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.w800,
-                                                color: AppColors.dark,
+                                    Get.dialog(
+                                      Dialog(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(24),
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(20),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Log Out',
+                                                style: GoogleFonts.dmSans(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: AppColors.dark,
+                                                ),
                                               ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              'Are you sure you want to logout from this account?',
-                                              style: GoogleFonts.dmSans(
-                                                fontSize: 13,
-                                                color: AppColors.muted,
-                                                height: 1.5,
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                'Are you sure you want to logout from this account?',
+                                                style: GoogleFonts.dmSans(
+                                                  fontSize: 13,
+                                                  color: AppColors.muted,
+                                                  height: 1.5,
+                                                ),
                                               ),
-                                            ),
-                                            const SizedBox(height: 20),
-                                            Obx(
-                                              () => Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: AppButton(
-                                                      label: 'Cancel',
-                                                      isOutline: true,
-                                                      onTap: controller
-                                                              .isLoading.value
-                                                          ? null
-                                                          : () => Get.back(),
+                                              const SizedBox(height: 20),
+                                              Obx(
+                                                () => Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: AppButton(
+                                                        label: 'Cancel',
+                                                        isOutline: true,
+                                                        onTap: controller
+                                                                .isLoading.value
+                                                            ? null
+                                                            : () => Get.back(),
+                                                      ),
                                                     ),
-                                                  ),
-                                                  const SizedBox(width: 10),
-                                                  Expanded(
-                                                    child: AppButton(
-                                                      label: controller
-                                                              .isLoading.value
-                                                          ? 'Logging out...'
-                                                          : 'Logout',
-                                                      color: AppColors.red,
-                                                      onTap: controller
-                                                              .isLoading.value
-                                                          ? null
-                                                          : () async {
-                                                              final success =
-                                                                  await controller
-                                                                      .logout();
-                                                              if (!success) {
-                                                                return;
-                                                              }
-                                                              if (Get.isDialogOpen ??
-                                                                  false) {
-                                                                Get.back();
-                                                              }
-                                                              Get.offAll(
-                                                                () =>
-                                                                    LoginScreen(),
-                                                              );
-                                                            },
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                      child: AppButton(
+                                                        label: controller
+                                                                .isLoading.value
+                                                            ? 'Logging out...'
+                                                            : 'Logout',
+                                                        color: AppColors.red,
+                                                        onTap: controller
+                                                                .isLoading.value
+                                                            ? null
+                                                            : () async {
+                                                                final success =
+                                                                    await controller
+                                                                        .logout();
+                                                                if (!success) {
+                                                                  return;
+                                                                }
+                                                                if (Get.isDialogOpen ??
+                                                                    false) {
+                                                                  Get.back();
+                                                                }
+                                                                Get.offAll(
+                                                                  () =>
+                                                                      LoginScreen(),
+                                                                );
+                                                              },
+                                                      ),
                                                     ),
-                                                  ),
-                                                ],
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  );
+                                    );
                                   },
                                   style: OutlinedButton.styleFrom(
                                     side: const BorderSide(
@@ -598,9 +598,8 @@ class ProfileScreen extends StatelessWidget {
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.dark
-                                  : AppColors.white,
+                              color:
+                                  isSelected ? AppColors.dark : AppColors.white,
                               borderRadius: BorderRadius.circular(30),
                               border: Border.all(
                                 color: isSelected
@@ -614,9 +613,8 @@ class ProfileScreen extends StatelessWidget {
                               style: GoogleFonts.dmSans(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppColors.muted,
+                                color:
+                                    isSelected ? Colors.white : AppColors.muted,
                               ),
                             ),
                           ),

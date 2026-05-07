@@ -14,6 +14,7 @@ class BookingController extends GetxController {
   final isCreateLoading = false.obs;
   final isInviteLoading = false.obs;
   final isPlayersLoading = false.obs;
+  final reviewingBookingIds = <int>{}.obs;
   final cancelingBookingIds = <int>{}.obs;
   final errorMessage = ''.obs;
   final bookingPlayersErrorMessage = ''.obs;
@@ -180,6 +181,32 @@ class BookingController extends GetxController {
       bookingPlayersErrorMessage.value = _readableError(e);
     } finally {
       isPlayersLoading.value = false;
+    }
+  }
+
+  Future<bool> reviewTurf({
+    required int turfId,
+    required int bookingId,
+    required num rating,
+    required String text,
+    required List<String> tags,
+  }) async {
+    try {
+      reviewingBookingIds.add(bookingId);
+      final message = await BookingService.reviewTurf(
+        turfId: turfId,
+        bookingId: bookingId,
+        rating: rating,
+        text: text,
+        tags: tags,
+      );
+      Get.snackbar('Success', message);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', _readableError(e));
+      return false;
+    } finally {
+      reviewingBookingIds.remove(bookingId);
     }
   }
 

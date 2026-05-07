@@ -97,7 +97,8 @@ class _TeamsScreenState extends State<TeamsScreen> {
                                   team: team,
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (_) => TeamDetailScreen(team: team),
+                                      builder: (_) =>
+                                          TeamDetailScreen(team: team),
                                     ),
                                   ),
                                 ),
@@ -243,13 +244,16 @@ class _TeamsScreenState extends State<TeamsScreen> {
           const SizedBox(height: 12),
           Obx(
             () => AppButton(
-              label: _teamController.isSaving.value ? 'Joining...' : 'Join Team',
+              label:
+                  _teamController.isSaving.value ? 'Joining...' : 'Join Team',
               onTap: _teamController.isSaving.value
                   ? null
                   : () async {
-                      final code = _joinCodeController.text.trim().toUpperCase();
+                      final code =
+                          _joinCodeController.text.trim().toUpperCase();
                       if (code.isEmpty) {
-                        Get.snackbar('Error', 'Please enter a valid invite code.');
+                        Get.snackbar(
+                            'Error', 'Please enter a valid invite code.');
                         return;
                       }
                       final result = await _teamController.joinTeamByCode(code);
@@ -270,9 +274,8 @@ class _TeamsScreenState extends State<TeamsScreen> {
   }) async {
     final nameController = TextEditingController(text: team?.name ?? '');
     final cityController = TextEditingController(text: team?.city ?? '');
-    String selectedSport = team?.sport.toLowerCase() == 'football'
-        ? 'football'
-        : 'cricket';
+    String selectedSport =
+        team?.sport.toLowerCase() == 'football' ? 'football' : 'cricket';
 
     await showModalBottomSheet<void>(
       context: context,
@@ -333,15 +336,15 @@ class _TeamsScreenState extends State<TeamsScreen> {
                       children: ['cricket', 'football'].map((sport) {
                         final isSelected = selectedSport == sport;
                         return GestureDetector(
-                          onTap: () => setModalState(() => selectedSport = sport),
+                          onTap: () =>
+                              setModalState(() => selectedSport = sport),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color:
-                                  isSelected ? AppColors.dark : AppColors.bg,
+                              color: isSelected ? AppColors.dark : AppColors.bg,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: isSelected
@@ -354,9 +357,8 @@ class _TeamsScreenState extends State<TeamsScreen> {
                               style: GoogleFonts.dmSans(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppColors.dark,
+                                color:
+                                    isSelected ? Colors.white : AppColors.dark,
                               ),
                             ),
                           ),
@@ -510,7 +512,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                               ...team.members.map(
                                 (member) => _MemberTile(
                                   member: member,
-                                  showRemove: team.canManage && !member.isCaptain,
+                                  showRemove:
+                                      team.canManage && !member.isCaptain,
                                   onRemove: () => _removeMember(team, member),
                                 ),
                               ),
@@ -553,9 +556,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                   label: _teamController.isInviteLoading.value
                       ? 'Loading...'
                       : 'Invite',
-                  onTap: !team.canManage || _teamController.isInviteLoading.value
-                      ? null
-                      : () => _showInviteSheet(context, team),
+                  onTap:
+                      !team.canManage || _teamController.isInviteLoading.value
+                          ? null
+                          : () => _showInviteSheet(context, team),
                 ),
               ),
             ],
@@ -693,9 +697,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
   Future<void> _showEditSheet(BuildContext context, TeamModel team) async {
     final nameController = TextEditingController(text: team.name);
     final cityController = TextEditingController(text: team.city);
-    String selectedSport = team.sport.toLowerCase() == 'football'
-        ? 'football'
-        : 'cricket';
+    String selectedSport =
+        team.sport.toLowerCase() == 'football' ? 'football' : 'cricket';
 
     await showModalBottomSheet<void>(
       context: context,
@@ -743,15 +746,15 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                       children: ['cricket', 'football'].map((sport) {
                         final isSelected = selectedSport == sport;
                         return GestureDetector(
-                          onTap: () => setModalState(() => selectedSport = sport),
+                          onTap: () =>
+                              setModalState(() => selectedSport = sport),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color:
-                                  isSelected ? AppColors.dark : AppColors.bg,
+                              color: isSelected ? AppColors.dark : AppColors.bg,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: isSelected
@@ -764,9 +767,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                               style: GoogleFonts.dmSans(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppColors.dark,
+                                color:
+                                    isSelected ? Colors.white : AppColors.dark,
                               ),
                             ),
                           ),
@@ -1307,7 +1309,7 @@ class _EmptyTeamsState extends StatelessWidget {
               color: AppColors.greenLt,
               borderRadius: BorderRadius.circular(18),
             ),
-            child:  const Icon(
+            child: const Icon(
               LucideIcons.shieldCheck,
               color: AppColors.green,
               size: 28,

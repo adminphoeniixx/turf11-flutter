@@ -80,8 +80,9 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
                               onTap: () => setState(() => _selectedAmt = i),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color:
-                                      selected ? AppColors.dark : AppColors.white,
+                                  color: selected
+                                      ? AppColors.dark
+                                      : AppColors.white,
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
                                     color: selected
@@ -146,7 +147,8 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
                         decoration: BoxDecoration(
                           color: AppColors.white,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.border, width: 1.5),
+                          border:
+                              Border.all(color: AppColors.border, width: 1.5),
                         ),
                         child: Row(
                           children: [
@@ -395,7 +397,8 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
     return raw
         .split(RegExp(r'[_\s]+'))
         .where((part) => part.isNotEmpty)
-        .map((part) => '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}')
+        .map((part) =>
+            '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}')
         .join(' ');
   }
 
@@ -404,7 +407,8 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
       if (txn.performedByName.trim().isNotEmpty) txn.performedByName.trim(),
       if (txn.createdAt.trim().isNotEmpty) _formatDateTime(txn.createdAt),
       if (txn.txnCode.trim().isNotEmpty) txn.txnCode.trim(),
-      if (txn.balanceAfter > 0) 'Balance after: Rs ${_formatAmount(txn.balanceAfter)}',
+      if (txn.balanceAfter > 0)
+        'Balance after: Rs ${_formatAmount(txn.balanceAfter)}',
     ];
 
     if (parts.isEmpty) {

@@ -324,16 +324,16 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                                 actionLabel: selectedTab == 0
                                     ? (isJoined ? 'View Details' : 'Join Match')
                                     : 'View Details',
-                                alignActionRight: selectedTab == 1,
+                                alignActionRight: true,
                                 secondaryActionLabel:
                                     selectedTab == 0 && !isJoined
                                         ? 'Join Code'
                                         : null,
                                 onTap: () => _openDetail(
-                                      context,
-                                      match.id,
-                                      isJoined: isJoined,
-                                    ),
+                                  context,
+                                  match.id,
+                                  isJoined: isJoined,
+                                ),
                                 onAction: () async {
                                   if (selectedTab == 0 && !isJoined) {
                                     final success =
@@ -354,10 +354,9 @@ class _JoinMatchScreenState extends State<JoinMatchScreen> {
                                     ),
                                   );
                                 },
-                                onSecondaryAction:
-                                    selectedTab == 0 && !isJoined
-                                        ? () => _openJoinCodeDialog(match)
-                                        : null,
+                                onSecondaryAction: selectedTab == 0 && !isJoined
+                                    ? () => _openJoinCodeDialog(match)
+                                    : null,
                               );
                             },
                           ),
@@ -512,6 +511,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
   int formatIndex = 0;
   int skillIndex = 0;
   int feeModeIndex = 0;
+  int visibilityIndex = 0;
   int? selectedTeamId;
   int? selectedTurfId;
   DateTime? selectedDate;
@@ -521,6 +521,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
   static const formats = ['5v5', '8v8', '11v11'];
   static const levels = ['all', 'beginner', 'intermediate', 'advanced'];
   static const feeModes = ['split', 'host_pays'];
+  static const visibilityModes = ['public', 'invite_only'];
 
   @override
   void initState() {
@@ -573,7 +574,8 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BackRow(label: 'Create Match', onBack: () => Navigator.pop(context)),
+            BackRow(
+                label: 'Create Match', onBack: () => Navigator.pop(context)),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
@@ -807,20 +809,21 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                       ),
                       const SizedBox(height: 10),
                       SizedBox(
-                        height: 90,
+                        height: 98,
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: 7,
                           separatorBuilder: (_, __) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
-                            final date = DateTime.now().add(Duration(days: index));
+                            final date =
+                                DateTime.now().add(Duration(days: index));
                             final isSelected = _isSameDate(date, selectedDate);
                             return GestureDetector(
                               onTap: () => _selectDate(date),
                               child: Container(
                                 width: 66,
                                 padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
+                                    const EdgeInsets.symmetric(vertical: 7),
                                 decoration: BoxDecoration(
                                   color: isSelected
                                       ? AppColors.dark
@@ -841,6 +844,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                                           .toUpperCase(),
                                       style: GoogleFonts.dmSans(
                                         fontSize: 10,
+                                        height: 1,
                                         fontWeight: FontWeight.w700,
                                         color: isSelected
                                             ? Colors.white70
@@ -852,6 +856,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                                       DateFormat('dd').format(date),
                                       style: GoogleFonts.dmSans(
                                         fontSize: 18,
+                                        height: 1,
                                         fontWeight: FontWeight.w800,
                                         color: isSelected
                                             ? Colors.white
@@ -863,6 +868,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                                       DateFormat('MMM').format(date),
                                       style: GoogleFonts.dmSans(
                                         fontSize: 10,
+                                        height: 1,
                                         color: isSelected
                                             ? Colors.white70
                                             : AppColors.muted2,
@@ -948,12 +954,12 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                                   onTap: !slot.isAvailable
                                       ? null
                                       : () => setState(() {
-                                          if (isSelected) {
-                                            selectedSlotIds.remove(slot.id);
-                                          } else {
-                                            selectedSlotIds.add(slot.id);
-                                          }
-                                        }),
+                                            if (isSelected) {
+                                              selectedSlotIds.remove(slot.id);
+                                            } else {
+                                              selectedSlotIds.add(slot.id);
+                                            }
+                                          }),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 14,
@@ -1034,7 +1040,8 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                         ),
                         fontSize: 10,
                         height: kAppCompactButtonHeight,
-                        onChanged: (value) => setState(() => formatIndex = value),
+                        onChanged: (value) =>
+                            setState(() => formatIndex = value),
                       ),
                       const SectionLabel('Skill Level'),
                       ChipRow(
@@ -1048,7 +1055,8 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                         ),
                         fontSize: 9,
                         height: kAppCompactButtonHeight,
-                        onChanged: (value) => setState(() => skillIndex = value),
+                        onChanged: (value) =>
+                            setState(() => skillIndex = value),
                       ),
                       Row(
                         children: [
@@ -1101,7 +1109,33 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                         ),
                         fontSize: 10,
                         height: kAppCompactButtonHeight,
-                        onChanged: (value) => setState(() => feeModeIndex = value),
+                        onChanged: (value) =>
+                            setState(() => feeModeIndex = value),
+                      ),
+                      const SectionLabel('Visibility'),
+                      ChipRow(
+                        const ['Public', 'Invite Only'],
+                        initial: visibilityIndex,
+                        equalWidth: true,
+                        spacing: 6,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 5,
+                        ),
+                        fontSize: 10,
+                        height: kAppCompactButtonHeight,
+                        onChanged: (value) =>
+                            setState(() => visibilityIndex = value),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        visibilityModes[visibilityIndex] == 'public'
+                            ? 'Anyone nearby can discover and join this match.'
+                            : 'Only invited players or teams can join this match.',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: AppColors.muted,
+                        ),
                       ),
                       const SectionLabel('Description'),
                       _TextField(
@@ -1171,6 +1205,11 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
       Get.snackbar('Error', 'Min players cannot be greater than max players.');
       return;
     }
+    if (visibilityModes[visibilityIndex] == 'invite_only' &&
+        selectedTeamId == null) {
+      Get.snackbar('Error', 'Please select a team for invite-only match.');
+      return;
+    }
 
     final payload = {
       'title': titleController.text.trim(),
@@ -1181,6 +1220,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
       'min_players': minPlayers,
       'max_players': maxPlayers,
       'fee_mode': feeModes[feeModeIndex],
+      'visibility': visibilityModes[visibilityIndex],
       'skill_level': levels[skillIndex],
       'description': descriptionController.text.trim(),
     };
@@ -1307,7 +1347,8 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     if (slots.isEmpty) {
       return 'No slots loaded yet.';
     }
-    final selected = slots.where((slot) => selectedSlotIds.contains(slot.id)).toList();
+    final selected =
+        slots.where((slot) => selectedSlotIds.contains(slot.id)).toList();
     if (selected.isEmpty) {
       return '${slots.length} slots available.';
     }
@@ -1328,8 +1369,7 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
     }
 
     final parts = <String>[
-      if (_distanceLabel(selectedTurf).isNotEmpty)
-        _distanceLabel(selectedTurf),
+      if (_distanceLabel(selectedTurf).isNotEmpty) _distanceLabel(selectedTurf),
       if (selectedTurf.city.trim().isNotEmpty) selectedTurf.city,
       if (selectedTurf.address.trim().isNotEmpty) selectedTurf.address,
     ];
@@ -1661,7 +1701,10 @@ class _CreateMatchScreenState extends State<CreateMatchScreen> {
                                           _capitalize(team.sport),
                                           team.city,
                                           '${team.playerCount} players',
-                                        ].where((part) => part.trim().isNotEmpty).join(' | '),
+                                        ]
+                                            .where((part) =>
+                                                part.trim().isNotEmpty)
+                                            .join(' | '),
                                         style: GoogleFonts.dmSans(
                                           fontSize: 11,
                                           color: AppColors.muted,
@@ -1854,7 +1897,8 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                                 ),
                               InfoRow(
                                 label: 'Fee mode',
-                                value: _capitalize(match.feeMode.replaceAll('_', ' ')),
+                                value: _capitalize(
+                                    match.feeMode.replaceAll('_', ' ')),
                               ),
                               if (match.inviteCode.trim().isNotEmpty)
                                 InfoRow(
@@ -1931,6 +1975,18 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                                       ? null
                                       : () => _finalizeMatch(match.id),
                                 ),
+                                if (!_isMatchClosed(match)) ...[
+                                  const SizedBox(height: 10),
+                                  AppButton(
+                                    label: controller.isCancelLoading.value
+                                        ? 'Cancelling...'
+                                        : 'Cancel Match',
+                                    color: AppColors.red,
+                                    onTap: controller.isCancelLoading.value
+                                        ? null
+                                        : () => _cancelMatch(match.id),
+                                  ),
+                                ],
                                 if (!match.canFinalize) ...[
                                   const SizedBox(height: 8),
                                   Text(
@@ -1941,6 +1997,43 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                                     ),
                                   ),
                                 ],
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (_canReviewMatch(match)) ...[
+                          const SizedBox(height: 16),
+                          AppCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Match Review',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.dark,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Rate your match experience and turf condition.',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 11,
+                                    color: AppColors.muted,
+                                    height: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                AppButton(
+                                  label: controller.isReviewLoading.value
+                                      ? 'Submitting...'
+                                      : 'Review Match',
+                                  isOutline: true,
+                                  onTap: controller.isReviewLoading.value
+                                      ? null
+                                      : () => _reviewMatch(match.id),
+                                ),
                               ],
                             ),
                           ),
@@ -1983,7 +2076,9 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                                               const SizedBox(height: 2),
                                               Text(
                                                 [
-                                                  if (player.status.trim().isNotEmpty)
+                                                  if (player.status
+                                                      .trim()
+                                                      .isNotEmpty)
                                                     _capitalize(player.status),
                                                   if (player.paymentStatus
                                                       .trim()
@@ -2028,8 +2123,7 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                           ),
                         ],
                         Obx(() {
-                          final isJoined =
-                              match.hasJoined ||
+                          final isJoined = match.hasJoined ||
                               controller.isMatchJoined(
                                 widget.matchId,
                                 fallback: widget.initiallyJoined,
@@ -2259,7 +2353,8 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                                                         player.id,
                                                       );
                                                     } else {
-                                                      selectedIds.add(player.id);
+                                                      selectedIds
+                                                          .add(player.id);
                                                     }
                                                   }),
                                           child: Container(
@@ -2298,8 +2393,7 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                                                           fontSize: 14,
                                                           fontWeight:
                                                               FontWeight.w700,
-                                                          color:
-                                                              AppColors.dark,
+                                                          color: AppColors.dark,
                                                         ),
                                                       ),
                                                       const SizedBox(height: 4),
@@ -2415,6 +2509,146 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
     }
 
     await controller.finalizeMatch(matchId);
+  }
+
+  Future<void> _cancelMatch(int matchId) async {
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Cancel Match'),
+          content: const Text(
+            'This will cancel the match for all players. Do you want to continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('No'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Cancel Match'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldCancel != true) {
+      return;
+    }
+
+    await controller.cancelMatch(matchId);
+  }
+
+  Future<void> _reviewMatch(int matchId) async {
+    final textController = TextEditingController();
+    var rating = 4;
+    final result = await showDialog<({int rating, String text})>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Review Match'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Rating',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.dark,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: List.generate(5, (index) {
+                      final value = index + 1;
+                      return IconButton(
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 36,
+                          minHeight: 36,
+                        ),
+                        onPressed: () =>
+                            setDialogState(() => rating = value),
+                        icon: Icon(
+                          value <= rating ? Icons.star : Icons.star_border,
+                          color: AppColors.green,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: textController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      hintText: 'Great match, good turf condition!',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop(
+                      (rating: rating, text: textController.text.trim()),
+                    );
+                  },
+                  child: const Text('Submit'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    textController.dispose();
+
+    if (result == null) {
+      return;
+    }
+    if (result.text.isEmpty) {
+      Get.snackbar('Error', 'Please write a short review.');
+      return;
+    }
+
+    await controller.reviewMatch(
+      matchId: matchId,
+      rating: result.rating,
+      text: result.text,
+    );
+  }
+
+  bool _isMatchClosed(MatchModel match) {
+    final status = match.status.trim().toLowerCase();
+    return status.contains('cancel') ||
+        status.contains('complete') ||
+        status.contains('final') ||
+        status.contains('closed');
+  }
+
+  bool _canReviewMatch(MatchModel match) {
+    final isJoined = match.hasJoined ||
+        controller.isMatchJoined(
+          match.id,
+          fallback: widget.initiallyJoined,
+        );
+    return isJoined && !_isMatchCancelled(match);
+  }
+
+  bool _isMatchCancelled(MatchModel match) {
+    final status = match.status.trim().toLowerCase();
+    return status.contains('cancel') || status.contains('closed');
   }
 }
 
@@ -2624,6 +2858,11 @@ class _MatchCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 10),
+                CompactStatusBadge(
+                  label: _statusLabel(),
+                  type: _statusBadgeType(),
+                ),
               ],
             ),
             if (_displayPlayerLabels.isNotEmpty) ...[
@@ -2714,7 +2953,8 @@ class _MatchCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (secondaryActionLabel != null && onSecondaryAction != null) ...[
+                if (secondaryActionLabel != null &&
+                    onSecondaryAction != null) ...[
                   const SizedBox(width: 8),
                   Expanded(
                     child: GestureDetector(
@@ -2783,6 +3023,28 @@ class _MatchCard extends StatelessWidget {
     return parts.join(' | ');
   }
 
+  String _statusLabel() {
+    final status = match.status.trim();
+    if (status.isEmpty) {
+      return match.isFull ? 'FULL' : 'OPEN';
+    }
+    return status.toUpperCase();
+  }
+
+  BadgeType _statusBadgeType() {
+    final status = match.status.trim().toLowerCase();
+    if (match.isFull || status.contains('cancel') || status.contains('closed')) {
+      return BadgeType.red;
+    }
+    if (status.contains('complete') || status.contains('final')) {
+      return BadgeType.dark;
+    }
+    if (status.contains('open') || status.contains('active')) {
+      return BadgeType.green;
+    }
+    return BadgeType.amber;
+  }
+
   String _timeLabel() {
     final rawStart = match.timeStart.trim();
     if (rawStart.isEmpty) {
@@ -2827,7 +3089,11 @@ class _MatchCard extends StatelessWidget {
     if (direct != null) {
       return direct;
     }
-    for (final pattern in const ['MMM d, yyyy', 'MMM dd, yyyy', 'dd MMM yyyy']) {
+    for (final pattern in const [
+      'MMM d, yyyy',
+      'MMM dd, yyyy',
+      'dd MMM yyyy'
+    ]) {
       try {
         return DateFormat(pattern).parseStrict(raw);
       } catch (_) {

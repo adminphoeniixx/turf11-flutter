@@ -86,9 +86,23 @@ class TurfModel {
           ) ??
           _readNum(pricingMap, const ['weekday', 'weekend', 'peak']) ??
           0,
-      rating: _readNum(merged, const ['rating', 'avg_rating']) ?? 0,
+      rating: _readNum(
+            merged,
+            const [
+              'rating',
+              'avg_rating',
+              'average_rating',
+              'rating_avg',
+              'reviews_avg_rating',
+            ],
+          ) ??
+          0,
       totalReviews:
-          _readInt(merged, const ['total_reviews', 'reviews_count']) ?? 0,
+          _readInt(
+                merged,
+                const ['total_reviews', 'reviews_count', 'review_count'],
+              ) ??
+              0,
       totalBookings: _readInt(merged, const ['total_bookings']) ?? 0,
       isAvailable: _readBool(
             merged,

@@ -132,6 +132,28 @@ class _HomeContentState extends State<_HomeContent> {
     return parts.join(' | ');
   }
 
+  String _matchStatusLabel(MatchModel match) {
+    final status = match.status.trim();
+    if (status.isEmpty) {
+      return match.isFull ? 'FULL' : 'OPEN';
+    }
+    return status.toUpperCase();
+  }
+
+  BadgeType _matchStatusBadgeType(MatchModel match) {
+    final status = match.status.trim().toLowerCase();
+    if (match.isFull || status.contains('cancel') || status.contains('closed')) {
+      return BadgeType.red;
+    }
+    if (status.contains('complete') || status.contains('final')) {
+      return BadgeType.dark;
+    }
+    if (status.contains('open') || status.contains('active')) {
+      return BadgeType.green;
+    }
+    return BadgeType.amber;
+  }
+
   String _playerInitialsForIndex(int index) {
     const initials = ['RS', 'AK', 'MV', 'SK', 'PJ', 'RT', 'NK', 'AD'];
     return initials[index % initials.length];
@@ -181,8 +203,8 @@ class _HomeContentState extends State<_HomeContent> {
   Future<void> _showLocationErrorDialog(String rawMessage) async {
     final message = rawMessage.replaceFirst('Exception: ', '');
     final isServiceDisabled = message.toLowerCase().contains(
-      'location service is disabled',
-    );
+          'location service is disabled',
+        );
     final isPermissionIssue = message.toLowerCase().contains('permission');
 
     await showDialog<void>(
@@ -563,8 +585,7 @@ class _HomeContentState extends State<_HomeContent> {
                       return ListView.separated(
                         shrinkWrap: true,
                         itemCount: players.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 10),
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           return _NearbyPlayerTile(player: players[index]);
                         },
@@ -1112,9 +1133,7 @@ class _HomeContentState extends State<_HomeContent> {
                   final isJoined = matchController.isMatchJoined(match.id);
                   final visiblePlayers = match.activePlayers.take(5).toList();
                   final displayPlayerLabels =
-                      visiblePlayers
-                          .map((player) => player.initials)
-                          .toList();
+                      visiblePlayers.map((player) => player.initials).toList();
                   final totalPlayers = match.activePlayers.length;
                   final remainingPlayersCount =
                       (totalPlayers - displayPlayerLabels.length).clamp(0, 999);
@@ -1153,6 +1172,11 @@ class _HomeContentState extends State<_HomeContent> {
                                       fontWeight: FontWeight.w800,
                                       color: AppColors.dark,
                                     ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  CompactStatusBadge(
+                                    label: _matchStatusLabel(match),
+                                    type: _matchStatusBadgeType(match),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
@@ -1553,6 +1577,7 @@ class _TurfCard extends StatelessWidget {
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(22)),
               child: TurfFieldBanner(
+                showBrand: false,
                 badgeText: turf.formatLabel,
                 badgeColor: Colors.white.withOpacity(0.9),
                 badgeTextColor: AppColors.green,
@@ -1924,4 +1949,3 @@ class _HomeMatchShimmerCard extends StatelessWidget {
     );
   }
 }
-

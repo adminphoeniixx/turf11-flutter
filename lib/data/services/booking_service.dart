@@ -111,6 +111,45 @@ class BookingService {
     );
   }
 
+  static Future<String> reviewTurf({
+    required int turfId,
+    required int bookingId,
+    required num rating,
+    required String text,
+    required List<String> tags,
+  }) async {
+    if (turfId <= 0) {
+      throw Exception('Invalid turf selected for review.');
+    }
+    if (bookingId <= 0) {
+      throw Exception('Invalid booking selected for review.');
+    }
+    if (rating <= 0 || rating > 5) {
+      throw Exception('Please select a rating between 1 and 5.');
+    }
+    final res = await ApiClient.post(
+      ApiConstants.reviews,
+      data: {
+        'type': 'turf',
+        'turf_id': turfId,
+        'booking_id': bookingId,
+        'rating': rating,
+        'text': text,
+        'tags': tags,
+      },
+    );
+    final data = res.data;
+    if (data is Map<String, dynamic>) {
+      return (data['message'] ?? 'Review submitted successfully.').toString();
+    }
+    if (data is Map) {
+      return (Map<String, dynamic>.from(data)['message'] ??
+              'Review submitted successfully.')
+          .toString();
+    }
+    return 'Review submitted successfully.';
+  }
+
   static Future<List<BookingPlayerModel>> fetchBookingPlayers({
     required int bookingId,
   }) async {

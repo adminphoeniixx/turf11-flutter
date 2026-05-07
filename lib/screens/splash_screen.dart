@@ -135,11 +135,15 @@ class _SplashScreenState extends State<SplashScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Spacer(),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: const AppLogo(
-                      width: 240,
-                      variant: AppLogoVariant.whiteGreen,
+                  FractionallySizedBox(
+                    widthFactor: 0.82,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 320),
+                      child: const AppLogo(
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                        variant: AppLogoVariant.whiteGreen,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),

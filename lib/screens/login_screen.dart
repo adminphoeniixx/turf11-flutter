@@ -39,131 +39,136 @@ class LoginScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-              // 🔥 SAME UI (no change)
-              const SizedBox(height: 20),
-               Transform.translate(
-                offset: const Offset(0, -28),
-                child: const Center(
-                  child: SizedBox(
-                    width: 210,
-                    height: 48,
-                    child: AppLogo(
-                      width: 210,
-                      variant: AppLogoVariant.blackGreen,
+                    // 🔥 SAME UI (no change)
+                    const SizedBox(height: 20),
+                    Transform.translate(
+                      offset: const Offset(0, -28),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 210,
+                          height: 48,
+                          child: AppLogo(
+                            width: 210,
+                            variant: AppLogoVariant.blackGreen,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 4),
+                    const SizedBox(height: 4),
 
-              Text(
-                'Welcome back.',
-                style: GoogleFonts.dmSans(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.dark,
-                    letterSpacing: -0.3),
-              ),
+                    Text(
+                      'Welcome back.',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.dark,
+                          letterSpacing: -0.3),
+                    ),
 
-              const SizedBox(height: 4),
+                    const SizedBox(height: 4),
 
-              Text(
-                'Sign in with your mobile number',
-                style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted),
-              ),
+                    Text(
+                      'Sign in with your mobile number',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 12, color: AppColors.muted),
+                    ),
 
-              const SizedBox(height: kScreenBlockSpacing),
+                    const SizedBox(height: kScreenBlockSpacing),
 
-              // 🔥 SAME MOBILE FIELD UI
-              _MobileField(controller: mobileController),
+                    // 🔥 SAME MOBILE FIELD UI
+                    _MobileField(controller: mobileController),
 
-              const SizedBox(height: 4),
+                    const SizedBox(height: 4),
 
-              // 🔥 ONLY LOGIC CHANGED HERE
-              Obx(
-                () => AppButton(
-                  label: controller.isLoading.value ? 'Sending OTP...' : 'Send OTP',
-                  large: true,
-                  onTap: controller.isLoading.value
-                      ? null
-                      : () async {
-                          FocusScope.of(context).unfocus();
-                          final phone = mobileController.text.trim();
+                    // 🔥 ONLY LOGIC CHANGED HERE
+                    Obx(
+                      () => AppButton(
+                        label: controller.isLoading.value
+                            ? 'Sending OTP...'
+                            : 'Send OTP',
+                        large: true,
+                        onTap: controller.isLoading.value
+                            ? null
+                            : () async {
+                                FocusScope.of(context).unfocus();
+                                final phone = mobileController.text.trim();
 
-                          if (phone.length != 10) {
-                            Get.snackbar("Error", "Enter valid number");
-                            return;
-                          }
+                                if (phone.length != 10) {
+                                  Get.snackbar("Error", "Enter valid number");
+                                  return;
+                                }
 
-                          final sent = await controller.sendOtp(phone, true);
-                          if (!sent) {
-                            return;
-                          }
+                                final sent =
+                                    await controller.sendOtp(phone, true);
+                                if (!sent) {
+                                  return;
+                                }
 
-                          if (!context.mounted) {
-                            return;
-                          }
+                                if (!context.mounted) {
+                                  return;
+                                }
 
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => OtpScreen(
-                                phone: phone,
-                                isLogin: true,
-                              ),
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => OtpScreen(
+                                      phone: phone,
+                                      isLogin: true,
+                                    ),
+                                  ),
+                                );
+                              },
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Obx(
+                      () => AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: controller.isLoading.value ? 1 : 0,
+                        child: Text(
+                          'Please wait, OTP request is being processed.',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: kScreenBlockSpacing),
+
+                    Center(
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const RegisterScreen()),
+                        ),
+                        child: RichText(
+                          text: TextSpan(children: [
+                            TextSpan(
+                              text: 'New here? ',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 12, color: AppColors.muted),
                             ),
-                          );
-                        },
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              Obx(
-                () => AnimatedOpacity(
-                  duration: const Duration(milliseconds: 200),
-                  opacity: controller.isLoading.value ? 1 : 0,
-                  child: Text(
-                    'Please wait, OTP request is being processed.',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 11,
-                      color: AppColors.muted,
+                            TextSpan(
+                              text: 'Create Account →',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  color: AppColors.green,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ]),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: kScreenBlockSpacing),
-
-              Center(
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => RegisterScreen()),
-                  ),
-                  child: RichText(
-                    text: TextSpan(children: [
-                      TextSpan(
-                        text: 'New here? ',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12, color: AppColors.muted),
-                      ),
-                      TextSpan(
-                        text: 'Create Account →',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: AppColors.green,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ]),
-                  ),
-                ),
-              ),
                   ],
                 ),
               ),
             );
           },
-          ),
+        ),
       ),
     );
   }

@@ -16,8 +16,9 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final controller =
-      Get.isRegistered<AuthController>() ? Get.find<AuthController>() : Get.put(AuthController());
+  final controller = Get.isRegistered<AuthController>()
+      ? Get.find<AuthController>()
+      : Get.put(AuthController());
 
   // ✅ Controllers added
   final phoneController = TextEditingController();
@@ -66,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                     Transform.translate(
+                    Transform.translate(
                       offset: const Offset(0, -8),
                       child: const Center(child: AppLogo(width: 180)),
                     ),
@@ -103,8 +104,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ],
                     ),
                     _field('Full Name', 'Enter your full name', nameController),
-                    _field('Email (optional)', 'Enter your email',
-                        emailController,
+                    _field(
+                        'Email (optional)', 'Enter your email', emailController,
                         type: TextInputType.emailAddress),
                     _field('City', 'Enter your city', cityController),
                     _field('State', 'Enter your state', stateController),
@@ -171,21 +172,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 final state = stateController.text.trim();
 
                                 if (phone.length != 10) {
-                                  Get.snackbar("Error", "Enter a valid phone number");
+                                  Get.snackbar(
+                                      "Error", "Enter a valid phone number");
                                   return;
                                 }
 
-                                if (name.isEmpty || city.isEmpty || state.isEmpty) {
-                                  Get.snackbar("Error", "Name, city and state are required");
+                                if (name.isEmpty ||
+                                    city.isEmpty ||
+                                    state.isEmpty) {
+                                  Get.snackbar("Error",
+                                      "Name, city and state are required");
                                   return;
                                 }
 
                                 if (_selectedSports.isEmpty) {
-                                  Get.snackbar("Error", "Select at least one sport");
+                                  Get.snackbar(
+                                      "Error", "Select at least one sport");
                                   return;
                                 }
 
-                                final sent = await controller.sendOtp(phone, false);
+                                final sent =
+                                    await controller.sendOtp(phone, false);
                                 if (!sent) {
                                   return;
                                 }
@@ -206,7 +213,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         "city": city,
                                         "state": state,
                                         "sports": _selectedSports
-                                            .map((i) => _sports[i].toLowerCase())
+                                            .map(
+                                                (i) => _sports[i].toLowerCase())
                                             .toList(),
                                       },
                                     ),
@@ -294,7 +302,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             _selectedDob = pickedDate;
             dobController.text = DateFormat('dd MMM yyyy').format(pickedDate);
           });
-          
         }
       },
       decoration: const InputDecoration(

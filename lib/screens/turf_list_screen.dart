@@ -75,37 +75,43 @@ class _TurfListScreenState extends State<TurfListScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Nearby Turfs',
-                              style: GoogleFonts.dmSans(
-                                fontSize: 19,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.dark,
-                              ),
-                            ),
-                            Obx(() {
-                              final count = _visibleTurfs(
-                                controller.turfs,
-                                query,
-                              ).length;
-                              final radius = controller.selectedRadiusKm.value;
-                              final subtitle =
-                                  controller.isUsingFallbackLocation.value
-                                      ? '$count found within $radius km using fallback location'
-                                      : '$count found within $radius km near you';
-                              return Text(
-                                subtitle,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Nearby Turfs',
                                 style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  color: AppColors.muted,
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.dark,
                                 ),
-                              );
-                            }),
-                          ],
+                              ),
+                              Obx(() {
+                                final count = _visibleTurfs(
+                                  controller.turfs,
+                                  query,
+                                ).length;
+                                final radius =
+                                    controller.selectedRadiusKm.value;
+                                final subtitle = controller
+                                        .isUsingFallbackLocation.value
+                                    ? '$count found within $radius km using fallback location'
+                                    : '$count found within $radius km near you';
+                                return Text(
+                                  subtitle,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: AppColors.muted,
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 12),
                         GestureDetector(
                           onTap: _openRadiusFilter,
                           child: Container(
@@ -212,8 +218,7 @@ class _TurfListScreenState extends State<TurfListScreen> {
                                     ),
                                   ),
                                 ),
-                                onDetailsTap: () =>
-                                    Navigator.of(context).push(
+                                onDetailsTap: () => Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) => TurfDetailScreen(
                                       initialTurf: turf,
@@ -325,6 +330,7 @@ class _TurfListScreenState extends State<TurfListScreen> {
                               ),
                               decoration: BoxDecoration(
                                 color: isSelected
+                                    // ignore: deprecated_member_use
                                     ? AppColors.green.withOpacity(0.08)
                                     : AppColors.bg,
                                 borderRadius: BorderRadius.circular(999),
@@ -453,6 +459,7 @@ class _TurfListCard extends StatelessWidget {
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(22)),
               child: TurfFieldBanner(
+                showBrand: false,
                 badgeText: turf.isAvailable ? turf.formatLabel : 'Unavailable',
                 badgeColor: turf.isAvailable
                     ? Colors.white.withOpacity(0.9)
@@ -493,52 +500,56 @@ class _TurfListCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            const Padding(
-                              padding: EdgeInsets.only(top: 1),
-                              child: Icon(LucideIcons.mapPin,
-                                  size: 10, color: AppColors.muted),
+                            const Icon(
+                              LucideIcons.mapPin,
+                              size: 12,
+                              color: AppColors.dark2,
                             ),
-                            const SizedBox(width: 4),
+                            if (_distanceText(turf).isNotEmpty) ...[
+                              const SizedBox(width: 4),
+                              Text(
+                                _distanceText(turf),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 10.5,
+                                  height: 1,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.dark,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Container(
+                                width: 3,
+                                height: 3,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.muted2,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(width: 5),
                             Expanded(
                               child: Text(
-                                _locationText(turf),
+                                _addressText(turf),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.dmSans(
-                                    fontSize: 10, color: AppColors.muted),
+                                  fontSize: 10,
+                                  height: 1.2,
+                                  color: AppColors.dark2,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 8),
-                      if ([turf.ratingLabel, turf.reviewLabel]
-                          .any((part) => part.trim().isNotEmpty))
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              LucideIcons.star,
-                              size: 11,
-                              color: AppColors.green,
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              [turf.ratingLabel, turf.reviewLabel]
-                                  .where((part) => part.trim().isNotEmpty)
-                                  .join(' '),
-                              style: GoogleFonts.dmSans(
-                                fontSize: 10,
-                                color: AppColors.green,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
+                      if (turf.rating > 0) _ratingRow(turf),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -575,7 +586,7 @@ class _TurfListCard extends StatelessWidget {
                             border: Border.all(color: AppColors.border),
                           ),
                           child: const Icon(
-                            LucideIcons.map,
+                            LucideIcons.mapPin,
                             size: 16,
                             color: AppColors.green,
                           ),
@@ -608,13 +619,47 @@ class _TurfListCard extends StatelessWidget {
     );
   }
 
-  String _locationText(TurfModel turf) {
-    final distance = turf.distanceKm != null && turf.distanceKm! > 0
-        ? '${turf.distanceKm!.toStringAsFixed(1)} km | '
+  String _distanceText(TurfModel turf) {
+    return turf.distanceKm != null && turf.distanceKm! > 0
+        ? '${turf.distanceKm!.toStringAsFixed(1)} km'
         : '';
-    final address =
-        turf.address.trim().isNotEmpty ? turf.address : turf.location;
-    return '$distance$address';
+  }
+
+  String _addressText(TurfModel turf) {
+    return turf.address.trim().isNotEmpty ? turf.address : turf.location;
+  }
+
+  Widget _ratingRow(TurfModel turf) {
+    final rating = turf.rating.toDouble().clamp(0, 5);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...List.generate(5, (index) {
+          final starValue = index + 1;
+          final icon = rating >= starValue
+              ? Icons.star_rounded
+              : rating >= starValue - 0.5
+                  ? Icons.star_half_rounded
+                  : Icons.star_border_rounded;
+          return Icon(
+            icon,
+            size: 12,
+            color: AppColors.green,
+          );
+        }),
+        const SizedBox(width: 3),
+        Text(
+          [turf.ratingLabel, turf.reviewLabel]
+              .where((part) => part.trim().isNotEmpty)
+              .join(' '),
+          style: GoogleFonts.dmSans(
+            fontSize: 10,
+            color: AppColors.green,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
   }
 
   String _capitalize(String value) {

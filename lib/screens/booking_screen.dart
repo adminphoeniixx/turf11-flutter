@@ -6,7 +6,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../controllers/booking_controller.dart';
 import '../controllers/turf_controller.dart';
-import '../data/models/booking_create_model.dart';
 import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
@@ -90,9 +89,9 @@ class _BookingScreenState extends State<BookingScreen> {
                         itemCount: 7,
                         separatorBuilder: (_, __) => const SizedBox(width: 8),
                         itemBuilder: (context, index) {
-                          final date = DateTime.now().add(Duration(days: index));
-                          final isSelected =
-                              _isSameDate(date, _selectedDate);
+                          final date =
+                              DateTime.now().add(Duration(days: index));
+                          final isSelected = _isSameDate(date, _selectedDate);
                           return GestureDetector(
                             onTap: () {
                               setState(() {
@@ -214,12 +213,12 @@ class _BookingScreenState extends State<BookingScreen> {
                             onTap: !canSelect
                                 ? null
                                 : () => setState(() {
-                                    if (isSelected) {
-                                      _selectedSlotIds.remove(slot.id);
-                                    } else {
-                                      _selectedSlotIds.add(slot.id);
-                                    }
-                                  }),
+                                      if (isSelected) {
+                                        _selectedSlotIds.remove(slot.id);
+                                      } else {
+                                        _selectedSlotIds.add(slot.id);
+                                      }
+                                    }),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14,
@@ -261,8 +260,8 @@ class _BookingScreenState extends State<BookingScreen> {
                                         : _isSlotExpired(slot)
                                             ? 'Time passed'
                                             : slot.price > 0
-                                        ? 'Rs ${_formatAmount(slot.price)}'
-                                        : 'Available',
+                                                ? 'Rs ${_formatAmount(slot.price)}'
+                                                : 'Available',
                                     style: GoogleFonts.dmSans(
                                       fontSize: 10,
                                       color: !canSelect
@@ -307,9 +306,8 @@ class _BookingScreenState extends State<BookingScreen> {
                           onTap: () => setState(() => _selectedPeople = index),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.dark
-                                  : AppColors.white,
+                              color:
+                                  isSelected ? AppColors.dark : AppColors.white,
                               borderRadius: BorderRadius.circular(30),
                               border: Border.all(
                                 color: isSelected
@@ -836,7 +834,8 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
           InfoRow(
             label: 'Date & Time',
-            value: '${DateFormat('dd MMM yyyy').format(_selectedDate)}, $slotText',
+            value:
+                '${DateFormat('dd MMM yyyy').format(_selectedDate)}, $slotText',
           ),
           InfoRow(
             label: 'Players',

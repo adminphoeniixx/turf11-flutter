@@ -211,6 +211,41 @@ class MatchService {
     );
   }
 
+  static Future<String> cancelMatch(int matchId) async {
+    if (matchId <= 0) {
+      throw Exception("Invalid match id detected while cancelling match.");
+    }
+    final res = await ApiClient.post(ApiConstants.cancelMatch(matchId));
+    return _readMessage(
+      res.data,
+      fallback: "Match cancelled successfully.",
+    );
+  }
+
+  static Future<String> reviewMatch({
+    required int matchId,
+    required int rating,
+    required String text,
+  }) async {
+    if (matchId <= 0) {
+      throw Exception("Invalid match id detected while reviewing match.");
+    }
+    if (rating < 1 || rating > 5) {
+      throw Exception("Please select a rating between 1 and 5.");
+    }
+    final res = await ApiClient.post(
+      ApiConstants.reviewMatch(matchId),
+      data: {
+        "rating": rating,
+        "text": text,
+      },
+    );
+    return _readMessage(
+      res.data,
+      fallback: "Review submitted successfully.",
+    );
+  }
+
   static Future<String> joinMatch(int matchId) async {
     if (matchId <= 0) {
       debugPrint("[MatchService] joinMatch blocked because matchId=$matchId");

@@ -29,8 +29,7 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
 
   late final WalletController _walletController;
   late final Razorpay _razorpay;
-  final TextEditingController _customAmountController =
-      TextEditingController();
+  final TextEditingController _customAmountController = TextEditingController();
 
   int _selectedAmt = 1;
   WalletTopupOrder? _pendingOrder;
@@ -108,8 +107,9 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
                               }),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color:
-                                      selected ? AppColors.dark : AppColors.white,
+                                  color: selected
+                                      ? AppColors.dark
+                                      : AppColors.white,
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
                                     color: selected
@@ -270,8 +270,7 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
       final order = await _walletController.createTopupOrder(
         amount: amountInPaise,
       );
-      final keyId =
-          order.keyId.isNotEmpty ? order.keyId : _fallbackRazorpayKey;
+      final keyId = order.keyId.isNotEmpty ? order.keyId : _fallbackRazorpayKey;
 
       if (keyId.isEmpty) {
         throw Exception(
@@ -601,7 +600,8 @@ class _WalletRazorpayScreenState extends State<WalletRazorpayScreen> {
       if (txn.performedByName.trim().isNotEmpty) txn.performedByName.trim(),
       if (txn.createdAt.trim().isNotEmpty) _formatDateTime(txn.createdAt),
       if (txn.txnCode.trim().isNotEmpty) txn.txnCode.trim(),
-      if (txn.balanceAfter > 0) 'Balance after: Rs ${_formatAmount(txn.balanceAfter)}',
+      if (txn.balanceAfter > 0)
+        'Balance after: Rs ${_formatAmount(txn.balanceAfter)}',
     ];
 
     if (parts.isEmpty) {

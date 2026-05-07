@@ -1,5 +1,6 @@
 class BookingModel {
   final int id;
+  final int turfId;
   final String bookingCode;
   final String inviteCode;
   final String turfName;
@@ -14,6 +15,7 @@ class BookingModel {
 
   const BookingModel({
     required this.id,
+    required this.turfId,
     required this.bookingCode,
     required this.inviteCode,
     required this.turfName,
@@ -28,19 +30,43 @@ class BookingModel {
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
+    final dataMap = _readMap(json['data']);
+    final bookingMap = _readMap(json['booking']);
+    final bookingDataMap = _readMap(bookingMap['data']);
+    final detailMap = _readMap(json['booking_detail']);
+    final dataDetailMap = _readMap(dataMap['booking_detail']);
+    final merged = <String, dynamic>{
+      ...dataMap,
+      ...bookingDataMap,
+      ...bookingMap,
+      ...dataDetailMap,
+      ...detailMap,
+      ...json,
+    };
+    final turfMap = _readMap(merged['turf']);
+    final slotMap = _readMap(merged['slot']);
     return BookingModel(
-      id: _readInt(json['id']),
-      bookingCode: (json['booking_code'] ?? '').toString(),
-      inviteCode: (json['invite_code'] ?? '').toString(),
-      turfName: (json['turf_name'] ?? '').toString(),
-      date: (json['date'] ?? '').toString(),
-      time: (json['time'] ?? '').toString(),
-      playersCount: _readInt(json['players_count']),
-      sportType: (json['sport_type'] ?? '').toString(),
-      amount: _readNum(json['amount']),
-      bookingStatus: (json['booking_status'] ?? '').toString(),
-      paymentStatus: (json['payment_status'] ?? '').toString(),
-      canCancel: _readBool(json['can_cancel']),
+      id: _readInt(merged['id'] ?? merged['booking_id']),
+      turfId: _readInt(
+        merged['turf_id'] ??
+            merged['turfId'] ??
+            merged['venue_id'] ??
+            merged['ground_id'] ??
+            turfMap['id'] ??
+            turfMap['turf_id'] ??
+            slotMap['turf_id'],
+      ),
+      bookingCode: (merged['booking_code'] ?? '').toString(),
+      inviteCode: (merged['invite_code'] ?? '').toString(),
+      turfName: (merged['turf_name'] ?? turfMap['name'] ?? '').toString(),
+      date: (merged['date'] ?? '').toString(),
+      time: (merged['time'] ?? '').toString(),
+      playersCount: _readInt(merged['players_count']),
+      sportType: (merged['sport_type'] ?? '').toString(),
+      amount: _readNum(merged['amount']),
+      bookingStatus: (merged['booking_status'] ?? merged['status'] ?? '').toString(),
+      paymentStatus: (merged['payment_status'] ?? '').toString(),
+      canCancel: _readBool(merged['can_cancel']),
     );
   }
 
@@ -154,11 +180,13 @@ class BookingListResponse {
   });
 
   factory BookingListResponse.fromJson(Map<String, dynamic> json) {
-    final bookingsRoot = json['bookings'];
+    final rootData = _readMap(json['data']);
+    final root = rootData.isNotEmpty ? <String, dynamic>{...json, ...rootData} : json;
+    final bookingsRoot = root['bookings'] ?? root['data'] ?? root['items'];
     final bookingsMap = bookingsRoot is Map<String, dynamic>
         ? bookingsRoot
         : <String, dynamic>{};
-    final list = bookingsMap['data'];
+    final list = bookingsRoot is List ? bookingsRoot : bookingsMap['data'];
 
     return BookingListResponse(
       bookings: list is List
@@ -169,9 +197,15 @@ class BookingListResponse {
                   ))
               .toList()
           : const <BookingModel>[],
-      currentPage: BookingModel._readInt(bookingsMap['current_page']),
-      lastPage: BookingModel._readInt(bookingsMap['last_page']),
-      total: BookingModel._readInt(bookingsMap['total']),
+      currentPage: BookingModel._readInt(bookingsMap['current_page']) == 0
+          ? 1
+          : BookingModel._readInt(bookingsMap['current_page']),
+      lastPage: BookingModel._readInt(bookingsMap['last_page']) == 0
+          ? 1
+          : BookingModel._readInt(bookingsMap['last_page']),
+      total: BookingModel._readInt(bookingsMap['total']) == 0 && list is List
+          ? list.length
+          : BookingModel._readInt(bookingsMap['total']),
     );
   }
 }

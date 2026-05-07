@@ -1,5 +1,6 @@
 class ApiConstants {
-  static const String baseUrl = "https://turf11.in/api/v1";
+  static const String baseUrl =
+      "https://turf11.in/api/v1";
 
   // AUTH
   static const sendOtp = "/auth/send-otp";
@@ -11,6 +12,7 @@ class ApiConstants {
   static const profile = "/profile";
   static const fcmToken = "/fcm-token";
   static const bookings = "/bookings";
+  static const reviews = "/reviews";
 
   // MATCHES
   static const matches = "/matches";
@@ -31,6 +33,8 @@ class ApiConstants {
   static String matchDetail(dynamic matchId) => "/matches/$matchId";
   static String joinMatch(dynamic matchId) => "/matches/$matchId/join";
   static String leaveMatch(dynamic matchId) => "/matches/$matchId/leave";
+  static String cancelMatch(dynamic matchId) => "/matches/$matchId/cancel";
+  static String reviewMatch(dynamic matchId) => "/matches/$matchId/review";
   static String inviteTeamToMatch(dynamic matchId) =>
       "/matches/$matchId/invite-team";
   static String invitePlayersToMatch(dynamic matchId) =>

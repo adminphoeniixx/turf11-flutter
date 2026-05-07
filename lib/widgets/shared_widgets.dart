@@ -266,6 +266,55 @@ class AppBadge extends StatelessWidget {
 }
 
 // ─── CHIP ROW ─────────────────────────────────────────────────────────────────
+class CompactStatusBadge extends StatelessWidget {
+  final String label;
+  final BadgeType type;
+
+  const CompactStatusBadge({
+    super.key,
+    required this.label,
+    this.type = BadgeType.green,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg, fg;
+    switch (type) {
+      case BadgeType.green:
+        bg = AppColors.greenLt;
+        fg = AppColors.green;
+        break;
+      case BadgeType.dark:
+        bg = AppColors.dark;
+        fg = Colors.white;
+        break;
+      case BadgeType.amber:
+        bg = AppColors.amberLt;
+        fg = AppColors.amber;
+        break;
+      case BadgeType.red:
+        bg = AppColors.redLt;
+        fg = AppColors.red;
+        break;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14)),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.dmSans(
+          fontSize: 8.5,
+          fontWeight: FontWeight.w800,
+          color: fg,
+        ),
+      ),
+    );
+  }
+}
+
 class ChipRow extends StatefulWidget {
   final List<String> options;
   final int initial;
@@ -322,13 +371,18 @@ class _ChipRowState extends State<ChipRow> {
             ),
           ),
           child: Center(
-            child: Text(
-              widget.options[i],
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
-                fontSize: widget.fontSize,
-                fontWeight: FontWeight.w500,
-                color: on ? Colors.white : AppColors.muted,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                widget.options[i],
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                style: GoogleFonts.dmSans(
+                  fontSize: widget.fontSize,
+                  height: 1,
+                  fontWeight: FontWeight.w500,
+                  color: on ? Colors.white : AppColors.muted,
+                ),
               ),
             ),
           ),
@@ -733,6 +787,7 @@ class TurfFieldBanner extends StatelessWidget {
   final Color? badgeColor;
   final Color? badgeTextColor;
   final double height;
+  final bool showBrand;
 
   const TurfFieldBanner({
     super.key,
@@ -740,6 +795,7 @@ class TurfFieldBanner extends StatelessWidget {
     this.badgeColor,
     this.badgeTextColor,
     this.height = 120,
+    this.showBrand = true,
   });
 
   @override
@@ -790,40 +846,40 @@ class TurfFieldBanner extends StatelessWidget {
             Positioned.fill(
               child: ColoredBox(color: Colors.black.withOpacity(0.2)),
             ),
-            // Centered logo
-            Center(
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(
-                      height: 24,
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: AppLogo(
-                          width: 78,
-                          variant: AppLogoVariant.whiteGreen,
+            if (showBrand)
+              Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        height: 24,
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: AppLogo(
+                            width: 78,
+                            variant: AppLogoVariant.whiteGreen,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Book. Play. Compete.',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 10,
-                        color: Colors.white.withOpacity(0.8),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Book. Play. Compete.',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 10,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
             // Badge
             if (badgeText != null)
               Positioned(

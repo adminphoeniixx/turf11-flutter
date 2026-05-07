@@ -25,6 +25,8 @@ class MatchController extends GetxController {
   final isNearbyPlayersLoading = false.obs;
   final isInvitePlayersLoading = false.obs;
   final isFinalizeLoading = false.obs;
+  final isCancelLoading = false.obs;
+  final isReviewLoading = false.obs;
   final isUsingFallbackLocation = false.obs;
   final currentLat = 0.0.obs;
   final currentLng = 0.0.obs;
@@ -334,6 +336,44 @@ class MatchController extends GetxController {
       return false;
     } finally {
       isFinalizeLoading.value = false;
+    }
+  }
+
+  Future<bool> cancelMatch(int matchId) async {
+    try {
+      isCancelLoading.value = true;
+      final message = await MatchService.cancelMatch(matchId);
+      Get.snackbar("Success", message);
+      await _refreshAfterMutation(matchId);
+      return true;
+    } catch (e) {
+      _logError('cancelMatch', e);
+      return false;
+    } finally {
+      isCancelLoading.value = false;
+    }
+  }
+
+  Future<bool> reviewMatch({
+    required int matchId,
+    required int rating,
+    required String text,
+  }) async {
+    try {
+      isReviewLoading.value = true;
+      final message = await MatchService.reviewMatch(
+        matchId: matchId,
+        rating: rating,
+        text: text,
+      );
+      Get.snackbar("Success", message);
+      await loadMatchDetail(matchId);
+      return true;
+    } catch (e) {
+      _logError('reviewMatch', e);
+      return false;
+    } finally {
+      isReviewLoading.value = false;
     }
   }
 

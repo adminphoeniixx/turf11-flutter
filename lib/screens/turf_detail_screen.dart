@@ -116,6 +116,7 @@ class _TurfDetailScreenState extends State<TurfDetailScreen> {
                         _detailLocation(turf),
                         style: GoogleFonts.dmSans(
                           fontSize: 12,
+                          // ignore: deprecated_member_use
                           color: Colors.white.withOpacity(0.8),
                           height: 1.45,
                         ),
@@ -151,6 +152,7 @@ class _TurfDetailScreenState extends State<TurfDetailScreen> {
                 detailError,
                 style: GoogleFonts.dmSans(
                   fontSize: 11,
+                  // ignore: deprecated_member_use
                   color: Colors.white.withOpacity(0.85),
                 ),
               ),
@@ -370,8 +372,10 @@ class _TurfDetailScreenState extends State<TurfDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
+        // ignore: deprecated_member_use
         color: Colors.white.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
+        // ignore: deprecated_member_use
         border: Border.all(color: Colors.white.withOpacity(0.12)),
       ),
       child: Row(
@@ -512,10 +516,10 @@ class _TurfHeroLoadingCard extends StatelessWidget {
             borderRadius: const BorderRadius.all(Radius.circular(8)),
           ),
           const SizedBox(height: 16),
-          Wrap(
+          const Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: const [
+            children: [
               ShimmerBox(
                 width: 92,
                 height: 28,

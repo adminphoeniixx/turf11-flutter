@@ -115,7 +115,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       kScreenListBottomPadding,
                     ),
                     physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: bookings.length + (controller.hasMoreBookings ? 1 : 0),
+                    itemCount:
+                        bookings.length + (controller.hasMoreBookings ? 1 : 0),
                     itemBuilder: (context, index) {
                       if (index >= bookings.length) {
                         return Padding(
@@ -129,21 +130,37 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                               compact: true,
                               onTap: controller.isLoadMoreLoading.value
                                   ? null
-                                  : () => controller.loadBookings(loadMore: true),
+                                  : () =>
+                                      controller.loadBookings(loadMore: true),
                             ),
                           ),
                         );
                       }
                       final booking = bookings[index];
-                      final isCanceling = controller.cancelingBookingIds.contains(
+                      final isCanceling =
+                          controller.cancelingBookingIds.contains(
                         booking.id,
                       );
+                      final isReviewing =
+                          controller.reviewingBookingIds.contains(booking.id);
                       return _BookingCard(
+                        key: ValueKey('booking-${booking.id}'),
                         booking: booking,
                         isCanceling: isCanceling,
+                        isReviewing: isReviewing,
                         onCancel: () => _showCancelBookingSheet(booking),
                         onInvite: () => _showInviteLinkSheet(booking),
                         onPlayers: () => _showPlayersSheet(booking),
+                        onReview: () {
+                          if (booking.turfId <= 0) {
+                            Get.snackbar(
+                              'Error',
+                              'Turf id is missing in this booking response.',
+                            );
+                            return;
+                          }
+                          _showReviewSheet(booking);
+                        },
                       );
                     },
                   ),
@@ -487,7 +504,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         invite.whatsappUrl.isEmpty) {
       Get.snackbar(
         'Error',
-        invite.message.isNotEmpty ? invite.message : 'Unable to load invite details.',
+        invite.message.isNotEmpty
+            ? invite.message
+            : 'Unable to load invite details.',
       );
       return;
     }
@@ -523,7 +542,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                 _InviteInfoRow(label: 'Code', value: invite.code),
                 _InviteInfoRow(label: 'Invite Link', value: invite.inviteLink),
                 if (invite.whatsappUrl.isNotEmpty)
-                  _InviteInfoRow(label: 'WhatsApp URL', value: invite.whatsappUrl),
+                  _InviteInfoRow(
+                      label: 'WhatsApp URL', value: invite.whatsappUrl),
                 const SizedBox(height: 14),
                 Row(
                   children: [
@@ -536,7 +556,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             : () async {
                                 final uri = Uri.tryParse(invite.whatsappUrl);
                                 if (uri == null) {
-                                  Get.snackbar('Error', 'WhatsApp link is invalid.');
+                                  Get.snackbar(
+                                      'Error', 'WhatsApp link is invalid.');
                                   return;
                                 }
                                 await launchUrl(
@@ -568,7 +589,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                         compact: true,
                         isOutline: true,
                         onTap: () async {
-                          await Clipboard.setData(ClipboardData(text: invite.code));
+                          await Clipboard.setData(
+                              ClipboardData(text: invite.code));
                           Get.snackbar('Copied', 'Booking code copied.');
                         },
                       ),
@@ -660,7 +682,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     child: Builder(
                       builder: (context) {
                         if (isLoading) {
-                          return const Center(child: CircularProgressIndicator());
+                          return const Center(
+                              child: CircularProgressIndicator());
                         }
                         if (error.isNotEmpty) {
                           return Center(
@@ -687,7 +710,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                         }
                         return ListView.separated(
                           itemCount: players.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
                           itemBuilder: (context, index) {
                             final player = players[index];
                             return Container(
@@ -699,11 +723,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  AppAvatar(initials: player.initials, size: 42),
+                                  AppAvatar(
+                                      initials: player.initials, size: 42),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           player.name,
@@ -716,8 +742,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                                         const SizedBox(height: 2),
                                         Text(
                                           [
-                                            if (player.city.isNotEmpty) player.city,
-                                            if (player.phone.isNotEmpty) player.phone,
+                                            if (player.city.isNotEmpty)
+                                              player.city,
+                                            if (player.phone.isNotEmpty)
+                                              player.phone,
                                           ].join(' | '),
                                           style: GoogleFonts.dmSans(
                                             fontSize: 10.5,
@@ -744,6 +772,186 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     );
   }
 
+  Future<void> _showReviewSheet(BookingModel booking) async {
+    var rating = 4.5;
+    var reviewText = '';
+    String? reviewErrorText;
+    var isSubmitting = false;
+    final selectedTags = <String>{'clean', 'good_lighting'};
+    const tagOptions = [
+      'clean',
+      'good_lighting',
+      'good_pitch',
+      'parking',
+      'staff',
+    ];
+
+    final submitted = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                20,
+                20,
+                MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              decoration: const BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Review Turf',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      booking.turfName,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Rating',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: List.generate(5, (index) {
+                        final value = index + 1;
+                        return IconButton(
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 34,
+                            minHeight: 34,
+                          ),
+                          onPressed: () => setModalState(() {
+                            rating = value.toDouble();
+                          }),
+                          icon: Icon(
+                            rating >= value
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                            color: AppColors.green,
+                            size: 28,
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      maxLines: 3,
+                      onChanged: (value) {
+                        reviewText = value;
+                        if (reviewErrorText != null &&
+                            value.trim().isNotEmpty) {
+                          setModalState(() {
+                            reviewErrorText = null;
+                          });
+                        }
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Great turf, well maintained!',
+                        errorText: reviewErrorText,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: tagOptions.map((tag) {
+                        final isSelected = selectedTags.contains(tag);
+                        return GestureDetector(
+                          onTap: () => setModalState(() {
+                            if (isSelected) {
+                              selectedTags.remove(tag);
+                            } else {
+                              selectedTags.add(tag);
+                            }
+                          }),
+                          child: AppBadge(
+                            tag.replaceAll('_', ' '),
+                            type: isSelected ? BadgeType.green : BadgeType.dark,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 18),
+                    AppButton(
+                      label: isSubmitting ? 'Submitting...' : 'Submit Review',
+                      onTap: isSubmitting
+                          ? null
+                          : () async {
+                              final text = reviewText.trim();
+                              if (text.isEmpty) {
+                                setModalState(() {
+                                  reviewErrorText =
+                                      'Please write a short review.';
+                                });
+                                return;
+                              }
+
+                              setModalState(() {
+                                isSubmitting = true;
+                              });
+
+                              final success = await controller.reviewTurf(
+                                turfId: booking.turfId,
+                                bookingId: booking.id,
+                                rating: rating,
+                                text: text,
+                                tags: selectedTags.toList(),
+                              );
+
+                              if (!sheetContext.mounted) {
+                                return;
+                              }
+
+                              if (success) {
+                                Navigator.of(sheetContext).pop(true);
+                                return;
+                              }
+
+                              setModalState(() {
+                                isSubmitting = false;
+                              });
+                            },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (submitted == true) {
+      await controller.loadBookings();
+    }
+  }
+
   String _formatAmount(num value) {
     final isWhole = value == value.roundToDouble();
     return value.toStringAsFixed(isWhole ? 0 : 2);
@@ -753,16 +961,21 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 class _BookingCard extends StatelessWidget {
   final BookingModel booking;
   final bool isCanceling;
+  final bool isReviewing;
   final VoidCallback onCancel;
   final VoidCallback onInvite;
   final VoidCallback onPlayers;
+  final VoidCallback onReview;
 
   const _BookingCard({
+    super.key,
     required this.booking,
     required this.isCanceling,
+    required this.isReviewing,
     required this.onCancel,
     required this.onInvite,
     required this.onPlayers,
+    required this.onReview,
   });
 
   @override
@@ -959,6 +1172,43 @@ class _BookingCard extends StatelessWidget {
                   ),
                 ],
               ],
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: _compactActionButtonHeight,
+              child: OutlinedButton.icon(
+                onPressed: isReviewing ? null : onReview,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.green,
+                  side: const BorderSide(color: AppColors.green),
+                  padding: EdgeInsets.symmetric(
+                    vertical: _compactButtonVerticalPadding,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: isReviewing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.green,
+                          ),
+                        ),
+                      )
+                    : const Icon(LucideIcons.star, size: 14),
+                label: Text(
+                  isReviewing ? 'Submitting Review' : 'Review Turf',
+                  style: GoogleFonts.dmSans(
+                    fontSize: _compactButtonFontSize,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ),
           ],
         ],

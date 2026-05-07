@@ -24,9 +24,8 @@ class PermissionScreen extends StatefulWidget {
     final notificationSettings =
         await FirebaseMessaging.instance.getNotificationSettings();
 
-    final isLocationEnabled =
-        locationPermission == LocationPermission.always ||
-            locationPermission == LocationPermission.whileInUse;
+    final isLocationEnabled = locationPermission == LocationPermission.always ||
+        locationPermission == LocationPermission.whileInUse;
     final isNotificationEnabled = _isNotificationEnabled(
       notificationSettings.authorizationStatus,
     );
