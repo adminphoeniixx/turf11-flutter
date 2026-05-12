@@ -22,6 +22,7 @@ class MatchController extends GetxController {
   final isCreateLoading = false.obs;
   final isJoinLoading = false.obs;
   final isInviteLinkLoading = false.obs;
+  final isInviteTeamLoading = false.obs;
   final isNearbyPlayersLoading = false.obs;
   final isInvitePlayersLoading = false.obs;
   final isFinalizeLoading = false.obs;
@@ -241,6 +242,31 @@ class MatchController extends GetxController {
       return null;
     } finally {
       isInviteLinkLoading.value = false;
+    }
+  }
+
+  Future<bool> inviteTeamToMatch({
+    required int matchId,
+    required int teamId,
+  }) async {
+    try {
+      isInviteTeamLoading.value = true;
+      final message = await MatchService.inviteTeamToMatch(
+        matchId: matchId,
+        teamId: teamId,
+      );
+      Get.snackbar(
+        "Success",
+        message.isNotEmpty ? message : "Team invited successfully.",
+      );
+      await loadMatchDetail(matchId);
+      return true;
+    } catch (e) {
+      _logError('inviteTeamToMatch', e);
+      Get.snackbar("Error", _readableError(e));
+      return false;
+    } finally {
+      isInviteTeamLoading.value = false;
     }
   }
 

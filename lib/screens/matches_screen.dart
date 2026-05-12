@@ -1764,6 +1764,7 @@ class MatchDetailScreen extends StatefulWidget {
 
 class _MatchDetailScreenState extends State<MatchDetailScreen> {
   late final MatchController controller;
+  late final TeamController teamController;
   final nearbyPlayersRadiusController = TextEditingController();
 
   @override
@@ -1772,10 +1773,15 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
     controller = Get.isRegistered<MatchController>()
         ? Get.find<MatchController>()
         : Get.put(MatchController());
+    teamController = Get.isRegistered<TeamController>()
+        ? Get.find<TeamController>()
+        : Get.put(TeamController());
     nearbyPlayersRadiusController.text =
         controller.nearbyPlayersRadiusKm.value.toString();
-    WidgetsBinding.instance.addPostFrameCallback(
-        (_) => controller.loadMatchDetail(widget.matchId));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.loadMatchDetail(widget.matchId);
+      teamController.loadTeams();
+    });
   }
 
   @override
@@ -1808,6 +1814,8 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                           'The detail API did not return a usable match payload.',
                     );
                   }
+
+                  final canInvite = _canInviteToMatch(match);
 
                   return RefreshIndicator(
                     color: AppColors.green,
@@ -1948,7 +1956,8 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                                       ? 'Preparing Link...'
                                       : 'Share Invite Link',
                                   isOutline: true,
-                                  onTap: controller.isInviteLinkLoading.value
+                                  onTap: controller.isInviteLinkLoading.value ||
+                                          !canInvite
                                       ? null
                                       : () => _shareInviteLink(match.id),
                                 ),
@@ -1958,10 +1967,33 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
                                       ? 'Loading Players...'
                                       : 'Invite Nearby Players',
                                   isOutline: true,
-                                  onTap: controller.isInvitePlayersLoading.value
-                                      ? null
-                                      : () => _openInvitePlayersSheet(match.id),
+                                  onTap:
+                                      controller.isInvitePlayersLoading.value ||
+                                              !canInvite
+                                          ? null
+                                          : () => _openInvitePlayersSheet(match.id),
                                 ),
+                                const SizedBox(height: 10),
+                                AppButton(
+                                  label: controller.isInviteTeamLoading.value
+                                      ? 'Inviting Team...'
+                                      : 'Invite Team',
+                                  isOutline: true,
+                                  onTap: controller.isInviteTeamLoading.value ||
+                                          !canInvite
+                                      ? null
+                                      : () => _openInviteTeamSheet(match.id),
+                                ),
+                                if (!canInvite) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Invites are available only while the match is open or draft.',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 11,
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(height: 10),
                                 AppButton(
                                   label: controller.isFinalizeLoading.value
@@ -2180,6 +2212,30 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
     return DateFormat('dd MMM yyyy').format(parsed);
   }
 
+  String _teamInviteSummary(TeamModel team) {
+    final parts = <String>[
+      if (team.sport.trim().isNotEmpty) _capitalize(team.sport),
+      if (team.city.trim().isNotEmpty) team.city.trim(),
+      '${team.playerCount} players',
+    ];
+    return parts.join(' | ');
+  }
+
+  String _teamInitials(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) {
+      return 'T';
+    }
+    return parts
+        .take(2)
+        .map((part) => part[0].toUpperCase())
+        .join();
+  }
+
   Future<void> _shareInviteLink(int matchId) async {
     final invite = await controller.loadMatchInviteLink(matchId);
     if (invite == null) {
@@ -2199,6 +2255,180 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
         text: message.isNotEmpty ? message : invite.inviteLink,
         subject: 'Join this Turf11 match',
       ),
+    );
+  }
+
+  Future<void> _openInviteTeamSheet(int matchId) async {
+    if (teamController.teams.isEmpty) {
+      await teamController.loadTeams();
+    }
+    if (!mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Obx(() {
+                final teams = teamController.teams;
+                final isLoading = teamController.isLoading.value;
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: AppColors.border,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Invite Team',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.dark,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Select a team from your list to invite them for this match.',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 320,
+                      child: isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : teams.isEmpty
+                              ? Center(
+                                  child: Text(
+                                    'No teams found to invite.',
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 12,
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
+                                )
+                              : ListView.separated(
+                                  shrinkWrap: true,
+                                  itemCount: teams.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 10),
+                                  itemBuilder: (context, index) {
+                                    final team = teams[index];
+                                    final isInviting =
+                                        controller.isInviteTeamLoading.value;
+
+                                    return InkWell(
+                                      borderRadius: BorderRadius.circular(16),
+                                      onTap: isInviting || team.id <= 0
+                                          ? null
+                                          : () async {
+                                              final success = await controller
+                                                  .inviteTeamToMatch(
+                                                matchId: matchId,
+                                                teamId: team.id,
+                                              );
+                                              if (success &&
+                                                  sheetContext.mounted) {
+                                                Navigator.of(sheetContext)
+                                                    .pop();
+                                              }
+                                            },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(14),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.bg,
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: AppColors.border,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            _PlayerBubble(
+                                              filled: true,
+                                              label: _teamInitials(team.name),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    team.name,
+                                                    style: GoogleFonts.dmSans(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: AppColors.dark,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    _teamInviteSummary(team),
+                                                    style: GoogleFonts.dmSans(
+                                                      fontSize: 11,
+                                                      color: AppColors.muted,
+                                                      height: 1.4,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            isInviting
+                                                ? const SizedBox(
+                                                    width: 18,
+                                                    height: 18,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: AppColors.green,
+                                                    ),
+                                                  )
+                                                : const Icon(
+                                                    LucideIcons.send,
+                                                    size: 18,
+                                                    color: AppColors.green,
+                                                  ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                    ),
+                  ],
+                );
+              }),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -2635,6 +2865,11 @@ class _MatchDetailScreenState extends State<MatchDetailScreen> {
         status.contains('complete') ||
         status.contains('final') ||
         status.contains('closed');
+  }
+
+  bool _canInviteToMatch(MatchModel match) {
+    final status = match.status.trim().toLowerCase();
+    return status == 'open' || status == 'draft';
   }
 
   bool _canReviewMatch(MatchModel match) {

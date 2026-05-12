@@ -9,6 +9,7 @@ import '../controllers/turf_controller.dart';
 import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../widgets/turf_media_gallery.dart';
 import '../widgets/wallet_feedback.dart';
 import 'matches_screen.dart';
 import 'my_bookings_screen.dart';
@@ -575,6 +576,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
       return Column(
         children: [
+          TurfMediaGallery(turf: turf),
           if (turf.description.trim().isNotEmpty)
             SmallCard(
               child: Column(

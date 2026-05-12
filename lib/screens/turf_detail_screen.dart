@@ -7,6 +7,7 @@ import '../controllers/turf_controller.dart';
 import '../data/models/turf_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/shared_widgets.dart';
+import '../widgets/turf_media_gallery.dart';
 
 class TurfDetailScreen extends StatefulWidget {
   final TurfModel initialTurf;
@@ -169,6 +170,7 @@ class _TurfDetailScreenState extends State<TurfDetailScreen> {
 
       return Column(
         children: [
+          TurfMediaGallery(turf: turf),
           if (turf.description.trim().isNotEmpty)
             SmallCard(
               child: Column(

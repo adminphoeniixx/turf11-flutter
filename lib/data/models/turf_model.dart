@@ -21,6 +21,8 @@ class TurfModel {
   final TurfPricing? pricing;
   final TurfOperatingHours? operatingHours;
   final List<String> amenities;
+  final List<TurfMediaModel> photos;
+  final List<TurfMediaModel> videos;
   final String ownerName;
   final String ownerBusiness;
 
@@ -42,6 +44,8 @@ class TurfModel {
     required this.amenities,
     required this.ownerName,
     required this.ownerBusiness,
+    this.photos = const <TurfMediaModel>[],
+    this.videos = const <TurfMediaModel>[],
     this.distanceKm,
     this.latitude,
     this.longitude,
@@ -82,9 +86,19 @@ class TurfModel {
       maxCapacity: _readInt(merged, const ['max_capacity']) ?? 0,
       pricePerHour: _readNum(
             merged,
-            const ['price_hr', 'price_per_hour', 'hourly_price', 'price', 'amount'],
+            const [
+              'price_hr',
+              'price_per_hour',
+              'hourly_price',
+              'price',
+              'amount',
+              'per_hour',
+            ],
           ) ??
-          _readNum(pricingMap, const ['weekday', 'weekend', 'peak']) ??
+          _readNum(
+            pricingMap,
+            const ['per_hour', 'weekday', 'weekend', 'peak', 'night'],
+          ) ??
           0,
       rating: _readNum(
             merged,
@@ -118,6 +132,23 @@ class TurfModel {
           ? null
           : TurfOperatingHours.fromJson(hoursMap),
       amenities: _readStringList(merged['amenities']),
+      photos: _readMediaList(
+        merged,
+        const [
+          'photos',
+          'photo_urls',
+          'images',
+          'image_urls',
+          'gallery',
+          'gallery_images',
+        ],
+        TurfMediaType.photo,
+      ),
+      videos: _readMediaList(
+        merged,
+        const ['videos', 'video_urls', 'video_gallery'],
+        TurfMediaType.video,
+      ),
       ownerName: _readString(ownerMap, const ['name'], fallback: ''),
       ownerBusiness: _readString(ownerMap, const ['business'], fallback: ''),
     );
@@ -233,10 +264,139 @@ class TurfModel {
     return const <String>[];
   }
 
+  static List<TurfMediaModel> _readMediaList(
+    Map<String, dynamic> source,
+    List<String> directKeys,
+    TurfMediaType expectedType,
+  ) {
+    final items = <TurfMediaModel>[];
+
+    for (final key in directKeys) {
+      items.addAll(_readMediaItems(source[key], fallbackType: expectedType));
+    }
+
+    for (final key in const ['media', 'media_files', 'attachments']) {
+      items.addAll(
+        _readMediaItems(source[key]).where((item) => item.type == expectedType),
+      );
+    }
+
+    final seen = <String>{};
+    return items.where((item) => seen.add(item.url)).toList();
+  }
+
+  static List<TurfMediaModel> _readMediaItems(
+    dynamic value, {
+    TurfMediaType? fallbackType,
+  }) {
+    if (value is List) {
+      return value
+          .expand((item) => _readMediaItems(item, fallbackType: fallbackType))
+          .toList();
+    }
+    if (value is Map) {
+      final map = Map<String, dynamic>.from(value);
+      for (final key in const ['data', 'items', 'files']) {
+        final nested = map[key];
+        if (nested is List) {
+          return _readMediaItems(nested, fallbackType: fallbackType);
+        }
+      }
+
+      final url = _readString(
+        map,
+        const [
+          'url',
+          'path',
+          'file',
+          'file_url',
+          'media_url',
+          'src',
+          'full_url',
+          'video_url',
+          'photo_url',
+          'image_url',
+        ],
+      );
+      if (url.isEmpty) {
+        return const <TurfMediaModel>[];
+      }
+      final typeText = _readString(
+        map,
+        const ['type', 'media_type', 'mime_type', 'mime'],
+      );
+      final type = _mediaTypeFromText(typeText, url, fallbackType);
+      return [
+        TurfMediaModel(
+          url: url,
+          type: type,
+          title: _readString(map, const ['title', 'name', 'caption']),
+        ),
+      ];
+    }
+    if (value is String) {
+      final url = value.trim();
+      if (url.isEmpty) {
+        return const <TurfMediaModel>[];
+      }
+      if (url.contains(',')) {
+        return url
+            .split(',')
+            .expand((item) => _readMediaItems(item, fallbackType: fallbackType))
+            .toList();
+      }
+      return [
+        TurfMediaModel(
+          url: url,
+          type: _mediaTypeFromText('', url, fallbackType),
+        ),
+      ];
+    }
+    return const <TurfMediaModel>[];
+  }
+
+  static TurfMediaType _mediaTypeFromText(
+    String typeText,
+    String url,
+    TurfMediaType? fallbackType,
+  ) {
+    final normalized = '$typeText $url'.toLowerCase();
+    if (normalized.contains('video') ||
+        normalized.endsWith('.mp4') ||
+        normalized.endsWith('.mov') ||
+        normalized.endsWith('.m3u8') ||
+        normalized.endsWith('.webm')) {
+      return TurfMediaType.video;
+    }
+    if (normalized.contains('image') ||
+        normalized.contains('photo') ||
+        normalized.endsWith('.jpg') ||
+        normalized.endsWith('.jpeg') ||
+        normalized.endsWith('.png') ||
+        normalized.endsWith('.webp')) {
+      return TurfMediaType.photo;
+    }
+    return fallbackType ?? TurfMediaType.photo;
+  }
+
   static String _formatAmount(num value) {
     final isWhole = value == value.roundToDouble();
     return value.toStringAsFixed(isWhole ? 0 : 2);
   }
+}
+
+enum TurfMediaType { photo, video }
+
+class TurfMediaModel {
+  final String url;
+  final TurfMediaType type;
+  final String title;
+
+  const TurfMediaModel({
+    required this.url,
+    required this.type,
+    this.title = '',
+  });
 }
 
 class TurfPricing {
@@ -256,7 +416,7 @@ class TurfPricing {
     return TurfPricing(
       weekday: TurfModel._readNum(json, const ['weekday']) ?? 0,
       weekend: TurfModel._readNum(json, const ['weekend']) ?? 0,
-      peak: TurfModel._readNum(json, const ['peak']) ?? 0,
+      peak: TurfModel._readNum(json, const ['peak', 'night']) ?? 0,
       surgeEnabled:
           TurfModel._readBool(json, const ['surge_enabled']) ?? false,
     );
@@ -278,8 +438,16 @@ class TurfOperatingHours {
 
   factory TurfOperatingHours.fromJson(Map<String, dynamic> json) {
     return TurfOperatingHours(
-      opens: TurfModel._readString(json, const ['opens'], fallback: '--:--'),
-      closes: TurfModel._readString(json, const ['closes'], fallback: '--:--'),
+      opens: TurfModel._readString(
+        json,
+        const ['opens', 'open'],
+        fallback: '--:--',
+      ),
+      closes: TurfModel._readString(
+        json,
+        const ['closes', 'close'],
+        fallback: '--:--',
+      ),
       openSundays:
           TurfModel._readBool(json, const ['open_sundays']) ?? false,
       openHolidays:
@@ -331,9 +499,10 @@ class TurfDetailResponse {
 
   factory TurfDetailResponse.fromJson(Map<String, dynamic> json) {
     final turfMap = TurfModel._readMap(json['turf']);
+    final mergedTurfMap = <String, dynamic>{...json, ...turfMap};
     final reviewsRaw = json['reviews'];
     return TurfDetailResponse(
-      turf: turfMap.isEmpty ? null : TurfModel.fromJson(turfMap),
+      turf: turfMap.isEmpty ? null : TurfModel.fromJson(mergedTurfMap),
       reviews: reviewsRaw is List
           ? reviewsRaw
               .whereType<Map>()
